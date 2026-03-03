@@ -55,7 +55,7 @@ export const CLUB_DATA = {
     contacts: {
         whatsapp: {
             label: "Escribinos por WhatsApp",
-            phone: "+50670567463",
+            phone: "+50688417056",
             message: "Hola, quiero info sobre los entrenamientos de Pujaguas"
         }
     },
@@ -89,14 +89,13 @@ export const CLUB_DATA = {
           id: "trainings",
           name: "Entrenamientos",
           schedule: [
-            { day: "Domingos", time: "8:00 am – 10:30 am" },
-            { day: "Miércoles", time: "7:00 pm – 9:30 pm" }
+            { day: "Jueves", time: "7:00 pm – 9:00 pm" }
           ]
         },
         {
           id: "games",
-          name: "Juegos y Torneos",
-          schedule: [{ day: "Martes", time: "8:00 pm – 10:00 pm" }]
+          name: "Juegos abiertos",
+          schedule: [{ day: "Lunes", time: "7:00 pm – 9:00 pm" }]
         }
       ]
     },
@@ -104,7 +103,7 @@ export const CLUB_DATA = {
     honors: {
       title: "Palmarés",
       items: [
-        {
+        /*{
           position: "Primer Lugar",
           tournament: "Copa Invierno",
           year: 2025
@@ -123,7 +122,7 @@ export const CLUB_DATA = {
           position: "Espíritu de Juego",
           tournament: "Copa Invierno",
           year: 2024
-        }
+        }*/
       ]
     },
 
