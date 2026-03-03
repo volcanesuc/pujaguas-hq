@@ -36,10 +36,10 @@ export const CLUB_DATA = {
 
   landing: {
     hero: {
-      title: "Pujaguas: Ultimate hecho en Guanacaste",
+      title: "Pujaguas: Ultimate hecho en Guanacaste 🌽🥏",
       image: "img/club/teamclub.jpeg",
       description:
-        "En Pujaguas promovemos y difundimos el Ultimate Frisbee como un espacio de crecimiento, comunidad y sana competencia. Impulsamos la participación tanto a nivel recreativo como competitivo, fortaleciendo el Espíritu de Juego, el trabajo en equipo y el desarrollo del deporte en Guanacaste. 🌽🥏",
+        "En Pujaguas promovemos y difundimos el Ultimate Frisbee como un espacio de crecimiento, comunidad y sana competencia. Impulsamos la participación tanto a nivel recreativo como competitivo, fortaleciendo el Espíritu de Juego, el trabajo en equipo y el desarrollo del deporte en Guanacaste.",
       cta: {
         primary: {
             label: "Ver entrenamientos",
