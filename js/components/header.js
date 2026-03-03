@@ -99,7 +99,7 @@ export async function loadHeader(activeTab, cfgOverride) {
         >☰</button>
 
         <a class="logo logo-link" href="${HOME_HREF}" title="Ir al inicio">
-          ${CLUB_DATA.header.logoText || "Volcanes"}
+          ${CLUB_DATA.header.logoText || "Club"}
         </a>
       </div>
 
@@ -113,7 +113,7 @@ export async function loadHeader(activeTab, cfgOverride) {
     <div class="offcanvas offcanvas-start" tabindex="-1" id="mobileMenu" aria-labelledby="mobileMenuLabel">
       <div class="offcanvas-header">
         <a class="offcanvas-title logo-link" id="mobileMenuLabel" href="${HOME_HREF}" title="Ir al inicio">
-          ${CLUB_DATA.header.mobileTitle || CLUB_DATA.header.logoText || "Volcanes"}
+          ${CLUB_DATA.header.mobileTitle || CLUB_DATA.header.logoText || "Club"}
         </a>
         <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Cerrar"></button>
       </div>

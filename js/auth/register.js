@@ -57,7 +57,7 @@ window.addEventListener("unhandledrejection", releaseUI);
 /* =========================
    Config / Collections
 ========================= */
-const CLUB_ID = APP_CONFIG?.clubId || APP_CONFIG?.club?.id || "volcanes";
+const CLUB_ID = APP_CONFIG?.clubId || APP_CONFIG?.club?.id || "pujaguas";
 
 const COL_PLANS = "subscription_plans";
 const COL_ASSOC = "associates";

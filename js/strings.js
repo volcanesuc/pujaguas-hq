@@ -1,15 +1,15 @@
 // js/strings.js
 export const CLUB_DATA = {
   club: {
-    id: "volcanes",
-    shortName: "Volcanes",
-    name: "Volcanes Ultimate",
-    foundedYear: 2023
+    id: "pujaguas",
+    shortName: "Pujaguas",
+    name: "Pujaguas Ultimate",
+    foundedYear: 2024
   },
 
   header: {
-    logoText: "Volcanes",
-    mobileTitle: "Volcanes Ultimate",
+    logoText: "Pujaguas",
+    mobileTitle: "Pujaguas Ultimate",
     cta: {
       login: {
         label: "Ingresar",
@@ -56,7 +56,7 @@ export const CLUB_DATA = {
         whatsapp: {
             label: "Escribinos por WhatsApp",
             phone: "+50670567463",
-            message: "Hola, quiero info sobre los entrenamientos de Volcanes"
+            message: "Hola, quiero info sobre los entrenamientos de Pujaguas"
         }
     },
 
@@ -175,7 +175,7 @@ export const CLUB_DATA = {
   },
 
   footer: {
-    copyright: "© Volcanes Ultimate"
+    copyright: "© Pujaguas Ultimate"
   }
 };
 

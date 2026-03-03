@@ -29,12 +29,12 @@ export const APP_CONFIG = {
     },
 
     font: {
-      name: "Recons",
-      url: "/fonts/Recons-Regular.woff2",
-      ttf: "/fonts/Recons-Regular.ttf"
+      name: "ClubFont",
+      url: "/fonts/club-font.woff2",
+      ttf: "/fonts/club-font.ttf"
     },
 
-    logo: "/img/logos/volcano_logo.jpg"
+    logo: "/img/logos/club_logo.png"
   },
   // Firebase (centralizado)
   firebase: {
