@@ -14,11 +14,11 @@ export const APP_CONFIG = {
   //deben ser reemplazados tambien en: main.css -> root para que carguen por defecto
   theme: {
     colors: {
-      primary: "#19473f",
-      primaryDark: "#12352f",
-      primaryLight: "#2c6b61",
-      accent: "#e8ce26",
-      accentSoft: "#f4e47a",
+      primary: "#370638",
+      primaryDark: "#2f0330",
+      primaryLight: "#570b58",
+      accent: "#ffba0d",
+      accentSoft: "#f3bc32",
       clubGray: "#f4f4f4",
       bg: "#f5f6f8",
       bgSoft: "#fafafa",
@@ -38,13 +38,13 @@ export const APP_CONFIG = {
   },
   // Firebase (centralizado)
   firebase: {
-    apiKey: "AIzaSyABSy5kImaF9VyNisu2vkihm2y4mfYGodw",
-    authDomain: "auth.volcanes.clubstudiohq.com",
-    projectId: "rifavolcanes",
-    storageBucket: "rifavolcanes.firebasestorage.app",
-    messagingSenderId: "991215068881",
-    appId: "1:991215068881:web:6fb46dab34bf1a572a47f0",
-    measurementId: "G-6ZYXBJW3JY"
+    apiKey: "AIzaSyBeinSTypfWXUAqPx8NLQmmJPjer0KnF74",
+    authDomain: "pujaguasclubstudiohq.firebaseapp.com",
+    projectId: "pujaguasclubstudiohq",
+    storageBucket: "pujaguasclubstudiohq.firebasestorage.app",
+    messagingSenderId: "823003476601",
+    appId: "1:823003476601:web:91e0e37a2ed61828b45aa8",
+    measurementId: "G-NRB9B4BCZN"
   }
 };
 
