@@ -139,7 +139,11 @@ export async function loadHeader(activeTab, cfgOverride) {
   if (initialMcta) {
     initialMcta.innerHTML = `<div class="spinner-border spinner-border-sm" role="status"></div>`;
   }
-
+  try {
+      await handleGoogleRedirectResult();
+    } catch (e) {
+      console.error("handleGoogleRedirectResult failed:", e);
+    }
   onAuthStateChanged(auth, async (user) => {
     const cta = document.getElementById("headerCta");
     const mcta = document.getElementById("mobileCta");
