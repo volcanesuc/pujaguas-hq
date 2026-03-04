@@ -17,6 +17,15 @@ import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/fi
   - Con redirect login: consume getRedirectResult 1 vez en el boot
 */
 
+
+console.log("🔥 BOOT FROM HEADER");
+
+getRedirectResult(auth).then((res) => {
+  console.log("🔥 REDIRECT RESULT RAW:", res);
+}).catch((e) => {
+  console.error("🔥 REDIRECT ERROR RAW:", e);
+});
+
 export async function loadHeader(activeTab, cfgOverride) {
   const header = document.getElementById("app-header");
   if (!header) return { ready: Promise.resolve() };

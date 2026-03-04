@@ -11,6 +11,14 @@ import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-
    HEADER
 ========================================================= */
 
+console.log("🔥 INDEX BOOT FROM HEADER");
+
+getRedirectResult(auth).then((res) => {
+  console.log("🔥 REDIRECT RESULT RAW:", res);
+}).catch((e) => {
+  console.error("🔥 REDIRECT ERROR RAW:", e);
+});
+
 async function init() {
   try {
     showLoader("Validando sesión…");
