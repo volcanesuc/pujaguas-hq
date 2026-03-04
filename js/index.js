@@ -5,21 +5,10 @@ import { loadHeader } from "./components/header.js";
 import { showLoader, hideLoader, updateLoaderMessage } from "./ui/loader.js";
 import { db } from "/js/auth/firebase.js";
 import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-import { getRedirectResult } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-
-
 
 /* =========================================================
    HEADER
 ========================================================= */
-
-console.log("🔥 INDEX BOOT FROM HEADER");
-
-getRedirectResult(auth).then((res) => {
-  console.log("🔥 REDIRECT RESULT RAW:", res);
-}).catch((e) => {
-  console.error("🔥 REDIRECT ERROR RAW:", e);
-});
 
 async function init() {
   try {
