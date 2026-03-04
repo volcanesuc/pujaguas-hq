@@ -4,8 +4,7 @@ import { db } from "../auth/firebase.js";
 
 import {
   GoogleAuthProvider,
-  signInWithRedirect,
-  getRedirectResult,
+  signInWithPopup,
   onAuthStateChanged,
   signOut,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
@@ -18,39 +17,19 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const provider = new GoogleAuthProvider();
-
-// evita correr getRedirectResult 2 veces
-let _redirectHandled = false;
-
 const STORAGE_KEY = "google_login_paths";
 
 /* =========================================================
-   Google Login (redirect)
+   Google Login (POPUP)
+   - Si users/{uid}.onboardingComplete === true => dashboard
+   - Si no => public/register.html?google=1
 ========================================================= */
-function ensureCanonicalHost() {
-  // ✅ elegimos SIN www como canónico porque Firebase te devuelve a pujaguas.clubstudiohq.com
-  if (location.host.startsWith("www.")) {
-    const canonicalHost = location.host.replace(/^www\./, "");
-    const target =
-      `${location.protocol}//${canonicalHost}` +
-      `${location.pathname}${location.search}${location.hash}`;
-
-    location.replace(target); // navega y reemplaza historial
-    return false; // cortá: la página va a recargar
-  }
-  return true;
-}
-
 export async function loginWithGoogle(opts = {}) {
-  // 🔥 asegurá host canónico ANTES de tocar sessionStorage/auth
-  if (!ensureCanonicalHost()) return;
-
   const dashboardPath = opts.dashboardPath ?? "dashboard.html";
-  // ✅ dejalo consistente con tu flujo (con ?google=1)
   const registerPath = opts.registerPath ?? "public/register.html?google=1";
 
   try {
-    // guardá paths para usarlos cuando regrese del redirect
+    // (opcional) guardá paths por si querés usarlos igual
     sessionStorage.setItem(
       STORAGE_KEY,
       JSON.stringify({ dashboardPath, registerPath })
@@ -58,79 +37,36 @@ export async function loginWithGoogle(opts = {}) {
 
     provider.setCustomParameters({ prompt: "select_account" });
 
-    // 👇 navega a Google (no popup)
-    await signInWithRedirect(auth, provider);
-  } catch (err) {
-    console.error("loginWithGoogle error:", err?.code, err?.message, err);
-    alert(`Error al iniciar sesión: ${err?.code || ""} ${err?.message || ""}`);
-  }
-}
+    // ✅ POPUP
+    const cred = await signInWithPopup(auth, provider);
+    const user = cred?.user;
+    if (!user) return null;
 
-/* =========================================================
-   Handle redirect result (call once on app boot)
-   - Si users/{uid}.onboardingComplete === true => dashboard
-   - Si no => public/register.html?google=1
-========================================================= */
-export async function handleGoogleRedirectResult() {
-  console.log("🔵 handleGoogleRedirectResult BOOT", location.href);
+    // Prefill siempre
+    sessionStorage.setItem(
+      "prefill_register",
+      JSON.stringify({
+        fullName: user.displayName || "",
+        email: user.email || "",
+        phone: user.phoneNumber || "",
+      })
+    );
 
-  if (_redirectHandled) {
-    console.log("⚠️ Redirect ya procesado");
-    return null;
-  }
-  _redirectHandled = true;
+    // paths guardados (o defaults)
+    const stored = safeJson(sessionStorage.getItem(STORAGE_KEY)) || {};
+    const dash = stored.dashboardPath ?? dashboardPath;
+    const reg = stored.registerPath ?? registerPath;
 
-  let cred = null;
-
-  try {
-    cred = await getRedirectResult(auth);
-    console.log("🔵 getRedirectResult:", cred?.user?.uid || "NO CRED");
-  } catch (err) {
-    console.error("❌ getRedirectResult error:", err?.code, err?.message, err);
-    return null;
-  }
-
-  // Si no viene de redirect, salir silenciosamente
-  if (!cred?.user) {
-    console.log("🟡 No hay redirect result");
-    return null;
-  }
-
-  const user = cred.user;
-  console.log("🟢 Usuario autenticado:", user.uid, user.email);
-
-  // Obtener paths guardados
-  const stored = safeJson(sessionStorage.getItem(STORAGE_KEY)) || {};
-  const dashboardPath = stored.dashboardPath ?? "dashboard.html";
-  const registerPath =
-    stored.registerPath ?? "public/register.html?google=1";
-
-  // Limpiar storage para evitar loops
-  sessionStorage.removeItem(STORAGE_KEY);
-
-  const email = (user.email || "").toLowerCase();
-
-  // Prefill siempre
-  sessionStorage.setItem(
-    "prefill_register",
-    JSON.stringify({
-      fullName: user.displayName || "",
-      email: user.email || "",
-      phone: user.phoneNumber || "",
-    })
-  );
-
-  try {
     const userRef = doc(db, "users", user.uid);
     const snap = await getDoc(userRef);
+
+    const email = (user.email || "").toLowerCase();
 
     if (snap.exists()) {
       const data = snap.data() || {};
       const done = data.onboardingComplete === true;
 
-      console.log("📄 User doc existe. onboardingComplete:", done);
-
-      // Mantener email actualizado
+      // mantener email actualizado
       if (email && data.email !== email) {
         await setDoc(
           userRef,
@@ -139,13 +75,11 @@ export async function handleGoogleRedirectResult() {
         );
       }
 
-      window.location.href = done ? dashboardPath : registerPath;
+      window.location.href = done ? dash : reg;
       return cred;
     }
 
-    console.log("📄 User doc NO existe. Creando...");
-
-    // Crear doc mínimo
+    // no existe => crear doc mínimo y mandar a register
     await setDoc(
       userRef,
       {
@@ -157,15 +91,23 @@ export async function handleGoogleRedirectResult() {
       { merge: true }
     );
 
-    console.log("✅ User doc creado. Redirigiendo a register");
-
-    window.location.href = registerPath;
+    window.location.href = reg;
     return cred;
 
   } catch (err) {
-    console.error("❌ Firestore error:", err?.code, err?.message, err);
-    alert(`Firestore error: ${err?.code} ${err?.message}`);
-    return cred;
+    console.error("loginWithGoogle popup error:", err?.code, err?.message, err);
+
+    // popup bloqueado
+    if (err?.code === "auth/popup-blocked") {
+      alert("El navegador bloqueó el popup. Permití popups e intentá de nuevo.");
+      return null;
+    }
+
+    // request anterior cancelada (normal si spamean click)
+    if (err?.code === "auth/cancelled-popup-request") return null;
+
+    alert(`Error al iniciar sesión: ${err?.code || ""} ${err?.message || ""}`);
+    return null;
   }
 }
 
