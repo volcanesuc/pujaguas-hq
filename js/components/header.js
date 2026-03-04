@@ -6,6 +6,8 @@ import { routeAfterGoogleLogin } from "../auth/role-routing.js";
 import { CLUB_DATA } from "../strings.js";
 import { loadHeaderTabsConfig, filterMenuByConfig } from "../remote-config.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { getRedirectResult } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
 
 /*
   Header único:
