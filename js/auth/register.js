@@ -1,6 +1,6 @@
 // //js\auth\register.js
 import { db, auth, storage } from "./firebase.js";
-import { loginWithGoogle, logout, handleGoogleRedirectResult } from "./auth.js";
+import { loginWithGoogle, logout } from "./auth.js";
 import { loadHeader } from "../components/header.js";
 import { APP_CONFIG } from "../config/config.js";
 import { showLoader, hideLoader, updateLoaderMessage } from "/js/ui/loader.js";
@@ -76,8 +76,6 @@ const $ = {
   alertBox: document.getElementById("alertBox"),
   form: document.getElementById("registerForm"),
   submitBtn: document.getElementById("submitBtn"),
-
-  googleBtn: document.getElementById("googleBtn"),
   logoutBtn: document.getElementById("logoutBtn"),
 
   firstName: document.getElementById("firstName"),
@@ -180,7 +178,6 @@ function hideAlert() {
 function setLoading(isLoading) {
   document.body.classList.toggle("loading", isLoading);
   if ($.submitBtn) $.submitBtn.disabled = isLoading;
-  if ($.googleBtn) $.googleBtn.disabled = isLoading;
   if ($.logoutBtn) $.logoutBtn.disabled = isLoading;
 }
 
@@ -426,48 +423,8 @@ function fillProvinceCanton() {
 loadHeader("home", { enabledTabs: {} });
 
 /* =========================
-   Redirect handling (SAFE)
-   Handle redirect FIRST
-========================= */
-(async () => {
-  try {
-    // si querés loader mientras procesa redirect:
-    // showLoader("Cargando…");
-
-    await handleGoogleRedirectResult();
-  } catch (e) {
-    console.warn("handleGoogleRedirectResult failed:", e);
-  } finally {
-    // ✅ pase lo que pase, no quedamos negros
-    releaseUI();
-    hideLoader();
-  }
-
-  // limpiar google=1 (si lo usás)
-  try {
-    const url = new URL(location.href);
-    if (url.searchParams.get("google") === "1") {
-      url.searchParams.delete("google");
-      history.replaceState({}, "", url.toString());
-    }
-  } catch (_) {}
-})();
-
-/* =========================
    Auth UI
 ========================= */
-$.googleBtn?.addEventListener("click", async () => {
-  hideAlert();
-  try {
-    // loginWithGoogle dispara redirect
-    showLoader("Cargando…");
-    await loginWithGoogle();
-  } catch (e) {
-    console.warn(e);
-    showAlert("Error al iniciar sesión con Google.");
-    hideLoader();
-  }
-});
 
 $.logoutBtn?.addEventListener("click", async () => {
   try {

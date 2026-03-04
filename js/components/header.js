@@ -1,12 +1,11 @@
 // js/components/header.js
 import { auth } from "../auth/firebase.js";
-import { loginWithGoogle, logout, handleGoogleRedirectResult } from "../auth/auth.js";
+import { loginWithGoogle, logout } from "../auth/auth.js";
 import { routeAfterGoogleLogin } from "../auth/role-routing.js";
 
 import { CLUB_DATA } from "../strings.js";
 import { loadHeaderTabsConfig, filterMenuByConfig } from "../remote-config.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-import { getRedirectResult } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
 
 /*
@@ -18,15 +17,6 @@ import { getRedirectResult } from "https://www.gstatic.com/firebasejs/10.7.1/fir
   - En index: rutea por roles/onboarding
   - Con redirect login: consume getRedirectResult 1 vez en el boot
 */
-
-
-console.log("🔥 BOOT FROM HEADER");
-
-getRedirectResult(auth).then((res) => {
-  console.log("🔥 REDIRECT RESULT RAW:", res);
-}).catch((e) => {
-  console.error("🔥 REDIRECT ERROR RAW:", e);
-});
 
 export async function loadHeader(activeTab, cfgOverride) {
   const header = document.getElementById("app-header");
@@ -185,7 +175,7 @@ export async function loadHeader(activeTab, cfgOverride) {
 
       const doLogin = async () => {
         try {
-          // redirect flow: esto navega fuera; no hay "return user"
+          // popup flow: abre ventana y vuelve con credencial
           await loginWithGoogle();
         } catch (e) {
           console.error(e);
