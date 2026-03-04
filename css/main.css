@@ -21,6 +21,9 @@
   --font-title: "ClubFont", system-ui, -apple-system, sans-serif;
   --font-body: system-ui, -apple-system, sans-serif;
   --bs-primary: var(--theme-primary);
+  --loader-primary: var(--theme-primary);
+  --loader-accent:  var(--theme-accent);
+  --loader-ring:    #ffffff;
 }
 
 /* =========================
