@@ -150,7 +150,7 @@ if (eventsSection && CLUB_DATA.landing.events?.length) {
 
     event.images.forEach(src => {
     const link = document.createElement("a");
-    link.href = "pages/public/cartaglow.html";
+    link.href = "pages/public/tournament_info.html";
     link.className = "event-link";
 
     const img = document.createElement("img");

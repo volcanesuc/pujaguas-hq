@@ -1,5 +1,5 @@
 /* =========================================================
-   MAIN.CSS — Volcanes Ultimate (limpio)
+   MAIN.CSS
    Base global + header + tablas + botones + loader
 ========================================================= */
 
@@ -301,7 +301,7 @@ th.sortable.sorted-desc::after { content: " ↓"; }
 }
 
 
-/* Header brand / Volcanes */
+/* Header brand */
 .app-header a,
 .app-header a:visited {
   color: var(--card);                 /* blanco */

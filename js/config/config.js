@@ -4,8 +4,8 @@ export const APP_CONFIG = {
   version: "0.3",
 
   club: {
-    id: "volcanes",
-    name: "Volcanes Ultimate",
+    id: "pujaguas",
+    name: "Pujaguas Ultimate",
     playersCollection: "club_players",
     tournamentsCollection: "tournaments",
     trainingsCollection: "trainings"
