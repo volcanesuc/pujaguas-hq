@@ -1,6 +1,6 @@
 // /js/ui/loader.preload.js
 (function () {
-  const OVERLAY_ID = "volcanesLoadingOverlay";
+  const OVERLAY_ID = "clubLoadingOverlay";
   const STYLE_ID = "volcanesPreloadLoaderStyles";
 
   function ensureStyles() {

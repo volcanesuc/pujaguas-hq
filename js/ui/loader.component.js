@@ -1,7 +1,7 @@
 // js/ui/loader.component.js
 import { APP_CONFIG } from "../config/config.js";
 
-const OVERLAY_ID = "volcanesLoadingOverlay"; 
+const OVERLAY_ID = "clubLoadingOverlay"; 
 const STYLE_ID = "loaderStyles";
 
 function ensureStyles() {

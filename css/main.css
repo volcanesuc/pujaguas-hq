@@ -441,6 +441,6 @@ html.preload body {
 }
 
 /* pero el overlay sí debe verse */
-html.preload #volcanesLoadingOverlay {
+html.preload #clubLoadingOverlay {
   opacity: 1;
 }
