@@ -27,9 +27,27 @@ const STORAGE_KEY = "google_login_paths";
 /* =========================================================
    Google Login (redirect)
 ========================================================= */
+function ensureCanonicalHost() {
+  // ✅ elegimos SIN www como canónico porque Firebase te devuelve a pujaguas.clubstudiohq.com
+  if (location.host.startsWith("www.")) {
+    const canonicalHost = location.host.replace(/^www\./, "");
+    const target =
+      `${location.protocol}//${canonicalHost}` +
+      `${location.pathname}${location.search}${location.hash}`;
+
+    location.replace(target); // navega y reemplaza historial
+    return false; // cortá: la página va a recargar
+  }
+  return true;
+}
+
 export async function loginWithGoogle(opts = {}) {
+  // 🔥 asegurá host canónico ANTES de tocar sessionStorage/auth
+  if (!ensureCanonicalHost()) return;
+
   const dashboardPath = opts.dashboardPath ?? "dashboard.html";
-  const registerPath = opts.registerPath ?? "public/register.html";
+  // ✅ dejalo consistente con tu flujo (con ?google=1)
+  const registerPath = opts.registerPath ?? "public/register.html?google=1";
 
   try {
     // guardá paths para usarlos cuando regrese del redirect
