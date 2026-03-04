@@ -210,6 +210,17 @@ function safeSeasonFromToday() {
   return String(new Date().getFullYear());
 }
 
+function setRequired(el, required) {
+  if (!el) return;
+  if (required) el.setAttribute("required", "required");
+  else el.removeAttribute("required");
+}
+
+function setEnabled(el, enabled) {
+  if (!el) return;
+  el.disabled = !enabled;
+}
+
 /* =========================
    Debug helpers
 ========================= */
@@ -241,7 +252,7 @@ async function hasActiveRole(uid) {
     const snap = await getDoc(roleRef);
     if (!snap.exists()) return false;
     const r = snap.data();
-    return r?.active === true && r?.clubId === CLUB_ID;
+    return r?.active === true;
   } catch (e) {
     // si rules bloquean, NO dejamos negro; solo asumimos "no tiene rol"
     console.warn("hasActiveRole failed:", e);
@@ -258,7 +269,6 @@ export async function ensureRole(uid) {
   if (snap.exists()) return snap.data();
 
   const payload = {
-    clubId: APP_CONFIG.club.id,
     role: "viewer",
     active: true,
     createdAt: serverTimestamp(),
@@ -478,6 +488,50 @@ async function loadPublicRegConfig() {
   const requireTerms = cfg.requireTerms === true;
   const termsUrl = cfg.termsUrl || null;
 
+  //Pago: si está deshabilitado, ocultar + desactivar + quitar required
+  const paymentSection = document.getElementById("paymentSection");
+  if (!enableMembershipPayment) {
+    paymentSection?.classList.add("d-none");
+
+    // deshabilitar inputs para que HTML validation no moleste
+    setEnabled($.planId, false);
+    setEnabled($.proofFile, false);
+
+    // quitar required por si lo tienen en el HTML
+    setRequired($.planId, false);
+    setRequired($.proofFile, false);
+
+    // opcional: limpiar valores
+    if ($.planId) $.planId.value = "";
+    if ($.proofFile) $.proofFile.value = "";
+    if ($.planMeta) $.planMeta.textContent = "";
+  } else {
+    paymentSection?.classList.remove("d-none");
+    setEnabled($.planId, true);
+    setEnabled($.proofFile, true);
+    // si querés, volverlos required:
+    setRequired($.planId, true);
+    setRequired($.proofFile, true);
+  }
+
+  //Declaración: si no aplica, deshabilitar + quitar required
+  if (!requireInfoDeclaration) {
+    setEnabled($.infoDeclaration, false);
+    setRequired($.infoDeclaration, false);
+  } else {
+    setEnabled($.infoDeclaration, true);
+    setRequired($.infoDeclaration, true);
+  }
+
+  //Términos: si no aplica, deshabilitar + quitar required
+  if (!requireTerms) {
+    setEnabled($.termsAccepted, false);
+    setRequired($.termsAccepted, false);
+  } else {
+    setEnabled($.termsAccepted, true);
+    setRequired($.termsAccepted, true);
+  }
+
   if ($.declarationWrap && $.infoDeclaration && $.infoDeclarationLabel) {
     if (requireInfoDeclaration) {
       $.declarationWrap.classList.remove("d-none");
@@ -501,6 +555,7 @@ async function loadPublicRegConfig() {
 
   PUBLIC_CFG = { enableMembershipPayment, requireTerms, requireInfoDeclaration };
 
+   updateSubmitState();
   return { requireInfoDeclaration, requireTerms, termsUrl, enableMembershipPayment, clubId: cfg.clubId || cfg.club?.id || null };
 }
 

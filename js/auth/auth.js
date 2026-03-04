@@ -99,14 +99,22 @@ export async function loginWithGoogle(opts = {}) {
 
     // popup bloqueado
     if (err?.code === "auth/popup-blocked") {
-      alert("El navegador bloqueó el popup. Permití popups e intentá de nuevo.");
+      // si querés, podés mostrar UI inline en vez de alert
+      // showToast("Permití popups e intentá de nuevo");
       return null;
     }
 
     // request anterior cancelada (normal si spamean click)
     if (err?.code === "auth/cancelled-popup-request") return null;
 
-    alert(`Error al iniciar sesión: ${err?.code || ""} ${err?.message || ""}`);
+    // 🔥 NO alert en permission-denied (esto pasa por rules/bootstrapping)
+    if (err?.code === "permission-denied") {
+      // opcional: si querés mostrar algo NO intrusivo
+      // showToast("No tenés permisos todavía. Intentá de nuevo o contactá al admin.");
+      return null;
+    }
+
+    // en general: no alert (si querés, lo manejás con UI tipo banner)
     return null;
   }
 }
