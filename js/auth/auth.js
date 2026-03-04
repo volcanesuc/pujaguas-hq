@@ -54,34 +54,45 @@ export async function loginWithGoogle(opts = {}) {
    - Si no => public/register.html?google=1
 ========================================================= */
 export async function handleGoogleRedirectResult() {
-  if (_redirectHandled) return null;
+  console.log("🔵 handleGoogleRedirectResult BOOT", location.href);
+
+  if (_redirectHandled) {
+    console.log("⚠️ Redirect ya procesado");
+    return null;
+  }
   _redirectHandled = true;
 
-  // si no hay redirect result, devuelve null y no hace nada
   let cred = null;
+
   try {
     cred = await getRedirectResult(auth);
+    console.log("🔵 getRedirectResult:", cred?.user?.uid || "NO CRED");
   } catch (err) {
-    console.error("getRedirectResult error:", err?.code, err?.message, err);
-    // no bloquea la app; solo reporta
+    console.error("❌ getRedirectResult error:", err?.code, err?.message, err);
     return null;
   }
 
-  if (!cred?.user) return null;
+  // Si no viene de redirect, salir silenciosamente
+  if (!cred?.user) {
+    console.log("🟡 No hay redirect result");
+    return null;
+  }
 
   const user = cred.user;
+  console.log("🟢 Usuario autenticado:", user.uid, user.email);
 
-  // paths guardados (o defaults)
+  // Obtener paths guardados
   const stored = safeJson(sessionStorage.getItem(STORAGE_KEY)) || {};
   const dashboardPath = stored.dashboardPath ?? "dashboard.html";
-  const registerPath = stored.registerPath ?? "public/register.html?google=1";
+  const registerPath =
+    stored.registerPath ?? "public/register.html?google=1";
 
-  const userRef = doc(db, "users", user.uid);
-  const snap = await getDoc(userRef);
+  // Limpiar storage para evitar loops
+  sessionStorage.removeItem(STORAGE_KEY);
 
   const email = (user.email || "").toLowerCase();
 
-  // siempre prefill
+  // Prefill siempre
   sessionStorage.setItem(
     "prefill_register",
     JSON.stringify({
@@ -91,37 +102,53 @@ export async function handleGoogleRedirectResult() {
     })
   );
 
-  if (snap.exists()) {
-    const data = snap.data() || {};
-    const done = data.onboardingComplete === true;
+  try {
+    const userRef = doc(db, "users", user.uid);
+    const snap = await getDoc(userRef);
 
-    // mantener email actualizado
-    if (email && data.email !== email) {
-      await setDoc(
-        userRef,
-        { email, updatedAt: serverTimestamp() },
-        { merge: true }
-      );
+    if (snap.exists()) {
+      const data = snap.data() || {};
+      const done = data.onboardingComplete === true;
+
+      console.log("📄 User doc existe. onboardingComplete:", done);
+
+      // Mantener email actualizado
+      if (email && data.email !== email) {
+        await setDoc(
+          userRef,
+          { email, updatedAt: serverTimestamp() },
+          { merge: true }
+        );
+      }
+
+      window.location.href = done ? dashboardPath : registerPath;
+      return cred;
     }
 
-    window.location.href = done ? dashboardPath : registerPath;
+    console.log("📄 User doc NO existe. Creando...");
+
+    // Crear doc mínimo
+    await setDoc(
+      userRef,
+      {
+        email: email || null,
+        onboardingComplete: false,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+
+    console.log("✅ User doc creado. Redirigiendo a register");
+
+    window.location.href = registerPath;
+    return cred;
+
+  } catch (err) {
+    console.error("❌ Firestore error:", err?.code, err?.message, err);
+    alert(`Firestore error: ${err?.code} ${err?.message}`);
     return cred;
   }
-
-  // no existe => crear doc mínimo y mandar a register
-  await setDoc(
-    userRef,
-    {
-      email: email || null,
-      onboardingComplete: false,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    },
-    { merge: true }
-  );
-
-  window.location.href = registerPath;
-  return cred;
 }
 
 function safeJson(s) {
