@@ -57,8 +57,6 @@ window.addEventListener("unhandledrejection", releaseUI);
 /* =========================
    Config / Collections
 ========================= */
-const CLUB_ID = APP_CONFIG?.clubId || APP_CONFIG?.club?.id || "pujaguas";
-
 const COL_PLANS = "subscription_plans";
 const COL_ASSOC = "associates";
 const COL_PLAYERS = "club_players";
@@ -287,7 +285,6 @@ async function ensureUserDoc(uid, email) {
   const usnap = await getDoc(uref).catch(() => null);
 
   const payload = {
-    clubId: CLUB_ID,
     email: email || null,
     updatedAt: serverTimestamp(),
   };
@@ -556,7 +553,7 @@ async function loadPublicRegConfig() {
   PUBLIC_CFG = { enableMembershipPayment, requireTerms, requireInfoDeclaration };
 
    updateSubmitState();
-  return { requireInfoDeclaration, requireTerms, termsUrl, enableMembershipPayment, clubId: cfg.clubId || cfg.club?.id || null };
+  return { requireInfoDeclaration, requireTerms, termsUrl, enableMembershipPayment};
 }
 
 /* =========================
@@ -1122,7 +1119,6 @@ $.form?.addEventListener("submit", async (ev) => {
     await step("Mark onboarding complete (users/{uid})", async () => {
       const uref = doc(db, "users", uid);
       const payload = {
-        clubId: CLUB_ID,
         email: email || auth.currentUser?.email || null,
 
         onboardingComplete: true,
