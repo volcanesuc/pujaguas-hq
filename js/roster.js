@@ -4,6 +4,7 @@
  *************************************************/
 import { db } from "./auth/firebase.js";
 import { watchAuth, logout } from "./auth/auth.js";
+import { getCurrentPermissions, applyVisibilityByPermission } from "./auth/permissions.js";
 import {
   collection,
   getDocs,
@@ -36,6 +37,9 @@ document.getElementById("logoutBtn")?.addEventListener("click", logout);
 const table = document.getElementById("playersTable");
 const modal = new bootstrap.Modal("#playerModal");
 const form = document.getElementById("playerForm");
+const addPlayerBtn = document.getElementById("addPlayerBtn");
+
+let permissions = null;
 
 // Campos del formulario
 const fields = {
@@ -76,6 +80,40 @@ async function loadPlayers() {
   applySort();
   render();
   updateSortIndicators();
+}
+
+/*************************************************
+ * HELPERS
+ *************************************************/
+
+function formatBirthdayMonthDay(value) {
+  if (!value) return "—";
+
+  const s = String(value).trim();
+  if (!s) return "—";
+
+  // Caso YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+    const [, mm, dd] = s.split("-");
+    const months = [
+      "Ene", "Feb", "Mar", "Abr", "May", "Jun",
+      "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"
+    ];
+    const monthIdx = Number(mm) - 1;
+    const day = Number(dd);
+    return monthIdx >= 0 && monthIdx < 12 ? `${months[monthIdx]} ${day}` : s;
+  }
+
+  // fallback por si viniera otro formato parseable
+  const d = new Date(s);
+  if (!Number.isNaN(d.getTime())) {
+    return d.toLocaleDateString("es-CR", {
+      month: "short",
+      day: "numeric"
+    });
+  }
+
+  return s;
 }
 
 /*************************************************
@@ -143,7 +181,7 @@ function render() {
   table.innerHTML = players
     .map(
       p => `
-      <tr data-id="${p.id}" class="player-row" style="cursor:pointer">
+      <tr data-id="${p.id}" class="player-row" style="cursor:${permissions?.canEditPlayers ? "pointer" : "default"}">
         <td class="fw-semibold">${p.fullName}</td>
         <td>
           <span class="badge bg-info text-dark">
@@ -152,7 +190,7 @@ function render() {
         </td>
         <td>${p.number ?? "—"}</td>
         <td>${p.gender ?? "—"}</td>
-        <td>${p.birthday ?? "—"}</td>
+        <td>${formatBirthdayMonthDay(p.birthday)}</td>
         <td>
           <span class="badge ${p.active ? "bg-success" : "bg-secondary"}">
             ${p.active ? "Activo" : "Inactivo"}
@@ -186,7 +224,7 @@ function renderMobileCards() {
         </div>
 
         <div class="mt-2 small text-muted">
-          ${p.gender ?? "—"} · ${p.birthday ?? "—"}
+          ${p.gender ?? "—"} · ${formatBirthdayMonthDay(p.birthday)}
         </div>
       </div>
     </div>
@@ -260,6 +298,8 @@ function updateRosterStats() {
  *************************************************/
 
 table.onclick = e => {
+  if (!permissions?.canEditPlayers) return;
+
   const row = e.target.closest(".player-row");
   if (!row) return;
 
@@ -285,6 +325,8 @@ table.onclick = e => {
  *************************************************/
 
 document.getElementById("playersCards").onclick = e => {
+  if (!permissions?.canEditPlayers) return;
+  
   const card = e.target.closest(".player-card");
   if (!card) return;
 
@@ -343,7 +385,9 @@ function updateSortIndicators() {
  * NUEVO JUGADOR
  *************************************************/
 
-document.getElementById("addPlayerBtn").onclick = () => {
+addPlayerBtn.onclick = () => {
+  if (!permissions?.canEditPlayers) return;
+
   form.reset();
   fields.id.value = "";
   fields.idNumber.value = "";
@@ -357,6 +401,7 @@ document.getElementById("addPlayerBtn").onclick = () => {
 
 form.onsubmit = async e => {
   e.preventDefault();
+  if (!permissions?.canEditPlayers) return;
 
   const data = {
     firstName: fields.firstName.value.trim(),
@@ -392,6 +437,10 @@ form.onsubmit = async e => {
 watchAuth(async () => {
   showLoader();
   try {
+    permissions = await getCurrentPermissions();
+
+    applyVisibilityByPermission(permissions, "canEditPlayers", addPlayerBtn);
+
     await loadPlayers();
   } finally {
     hideLoader();
