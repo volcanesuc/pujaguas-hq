@@ -1,6 +1,7 @@
 // js/features/tournament_roster.js
 import { db } from "../auth/firebase.js";
 import { watchAuth, logout } from "../auth/auth.js";
+import { getCurrentPermissions } from "../auth/permissions.js";
 import { APP_CONFIG } from "../config/config.js";
 import { showLoader, hideLoader } from "../ui/loader.js";
 import { loadHeader } from "../components/header.js";
@@ -82,9 +83,15 @@ const roleCounters = document.getElementById("roleCounters");
 const addGuestBtn = document.getElementById("addGuestBtn");
 const editTournamentBtn = document.getElementById("editTournamentBtn");
 
+const contextHint = document.getElementById("contextHint");
+const rosterPanelCol = document.getElementById("rosterPanelCol");
+const playersPanelCol = document.getElementById("playersPanelCol");
+
 /* ==========================
    PARAMS / STATE
 ========================== */
+let permissions = null;
+
 const params = new URLSearchParams(window.location.search);
 const tournamentId = (params.get("id") || "").trim();
 
@@ -132,6 +139,7 @@ addGuestBtn?.addEventListener("click", createGuestFlow);
 
 editTournamentBtn?.addEventListener("click", async (e) => {
   e.preventDefault();
+  if (!permissions?.canEditTournament) return;
   if (!tournamentId) return;
 
   const editor = await ensureTournamentEditor();
@@ -157,6 +165,7 @@ window.addEventListener("tournament:changed", async (e) => {
       await loadPlayers();
       await loadGuests();
       await loadRoster();
+      applyRoleUI();
       render();
       renderPlayers();
     } catch (err) {
@@ -174,6 +183,8 @@ window.addEventListener("tournament:changed", async (e) => {
 watchAuth(async () => {
   showLoader();
   try {
+    permissions = await getCurrentPermissions();
+
     if (appVersion) appVersion.textContent = `v${APP_CONFIG.version}`;
 
     const logoutBtn = document.getElementById("logoutBtn");
@@ -196,6 +207,8 @@ watchAuth(async () => {
     await loadPlayers();
     await loadGuests();
     await loadRoster();
+
+    applyRoleUI();
     render();
     renderPlayers();
   } catch (e) {
@@ -285,10 +298,10 @@ async function loadPlayers() {
     .filter(p => (p.name || "").trim().length > 0)
     .sort((a, b) => (a.name || "").localeCompare(b.name || "", "es"));
 
-  if (playersSubtitle) {
+  if (playersSubtitle && permissions?.canManageRoster) {
     playersSubtitle.textContent = players.length
       ? `${players.length} jugador(es) activo(s)`
-      : `No hay jugadores activos disponibles.`;
+      : "No hay jugadores activos disponibles.";
   }
 }
 
@@ -314,6 +327,49 @@ async function loadGuests() {
 }
 
 /* ==========================
+   PERMISSIONS / UI
+========================== */
+function applyRoleUI() {
+  const canManageRoster = !!permissions?.canManageRoster;
+  const canEditTournament = !!permissions?.canEditTournament;
+  const canManagePayments = !!permissions?.canManagePayments;
+  const canCreateGuests = !!permissions?.canCreateGuests;
+  const isViewerOnly = !canManageRoster;
+
+  editTournamentBtn?.classList.toggle("d-none", !canEditTournament);
+  toggleTeamFeeBtn?.classList.toggle("d-none", !canManagePayments);
+  addGuestBtn?.classList.toggle("d-none", !canCreateGuests);
+
+  if (playersPanelCol) {
+    playersPanelCol.classList.toggle("d-none", isViewerOnly);
+  }
+
+  if (rosterPanelCol) {
+    rosterPanelCol.classList.toggle("col-xl-7", !isViewerOnly);
+    rosterPanelCol.classList.toggle("col-xl-12", isViewerOnly);
+  }
+
+  if (contextHint) {
+    contextHint.innerHTML = isViewerOnly
+      ? `
+        <div class="text-muted small d-flex align-items-center gap-2">
+          <i class="bi bi-eye"></i>
+          Vista de solo lectura del roster del torneo
+        </div>
+      `
+      : `
+        <div class="text-muted small d-flex align-items-center gap-2">
+          <i class="bi bi-people"></i>
+          Administra convocados, confirmados y abonos del fee
+        </div>
+      `;
+  }
+
+  if (playersTitle && isViewerOnly) playersTitle.textContent = "Jugadores";
+  if (playersSubtitle && isViewerOnly) playersSubtitle.textContent = "";
+}
+
+/* ==========================
    RENDER: ROSTER
 ========================== */
 function render() {
@@ -321,6 +377,7 @@ function render() {
 
   if (tName) tName.textContent = tournament.name || "—";
   if (tMeta) tMeta.textContent = formatTournamentMeta(tournament);
+
   if (tDates) {
     const start = tournament?.dateStart || "—";
     const end = tournament?.dateEnd || "";
@@ -345,7 +402,14 @@ function render() {
     list = list.filter(matchesLegendFilters);
   }
 
-  if (rosterList) rosterList.innerHTML = list.length ? list.map(rosterRow).join("") : "";
+  if (rosterList) {
+    if (!list.length) {
+      rosterList.innerHTML = "";
+    } else {
+      const grouped = getGroupedRoster(list);
+      rosterList.innerHTML = grouped.map(rosterGroupSection).join("");
+    }
+  }
 
   if (rosterEmpty) {
     rosterEmpty.classList.toggle("d-none", list.length > 0);
@@ -353,6 +417,8 @@ function render() {
   }
 
   renderRosterCounters(list);
+
+  if (!permissions?.canManageRoster && !permissions?.canManagePayments) return;
 
   rosterList?.querySelectorAll("[data-remove]")?.forEach(btn => {
     btn.addEventListener("click", async () => {
@@ -370,6 +436,8 @@ function render() {
 
   rosterList?.querySelectorAll("[data-pay]")?.forEach(btn => {
     btn.addEventListener("click", async () => {
+      if (!permissions?.canManagePayments) return;
+
       const id = btn.getAttribute("data-pay");
       const r = roster.find(x => x.id === id);
       if (!r) return;
@@ -395,7 +463,6 @@ function render() {
 
 function renderRosterCounters(visibleList) {
   const base = roster;
-  // const base = visibleList;
 
   const total = base.length;
   const m = base.filter(r => isMale(r.gender)).length;
@@ -407,7 +474,17 @@ function renderRosterCounters(visibleList) {
 
   renderDynamicRoleCounters(base);
 
-  if (pageSubtitle) pageSubtitle.textContent = "";
+  if (pageSubtitle) {
+    pageSubtitle.textContent = permissions?.canManageRoster
+      ? (S.roster?.subtitle || "Jugadores convocados")
+      : "Vista ordenada del roster por posición";
+  }
+
+  if (rosterSubtitle) {
+    rosterSubtitle.textContent = permissions?.canManageRoster
+      ? (S.roster?.subtitle || "Jugadores convocados")
+      : "Jugadores agrupados por posición";
+  }
 }
 
 function renderDynamicRoleCounters(list) {
@@ -426,6 +503,15 @@ function renderDynamicRoleCounters(list) {
    RENDER: RIGHT PANEL (PICKER)
 ========================== */
 function renderPlayers() {
+  if (!permissions?.canManageRoster) {
+    if (playersList) playersList.innerHTML = "";
+    if (playersEmpty) playersEmpty.classList.add("d-none");
+    if (playersSubtitle) playersSubtitle.textContent = "";
+    const addPanelState = document.getElementById("addPanelState");
+    if (addPanelState) addPanelState.textContent = "";
+    return;
+  }
+
   const q = (playersSearch?.value || "").trim().toLowerCase();
 
   const rosterIds = new Set(roster.map(r => r.playerId || r.guestId || r.id));
@@ -473,6 +559,8 @@ function renderPlayers() {
    ACTIONS
 ========================== */
 async function addToRoster(itemId) {
+  if (!permissions?.canManageRoster) return;
+
   const p = players.find(x => x.id === itemId);
   const g = guests.find(x => x.id === itemId);
   const item = p || g;
@@ -507,6 +595,8 @@ async function addToRoster(itemId) {
 }
 
 async function removeFromRoster(docId) {
+  if (!permissions?.canManageRoster) return;
+
   const ok = confirm("¿Quitar del roster?");
   if (!ok) return;
 
@@ -525,6 +615,8 @@ async function removeFromRoster(docId) {
 }
 
 async function toggleStatus(docId) {
+  if (!permissions?.canManageRoster) return;
+
   const r = roster.find(x => x.id === docId);
   if (!r) return;
 
@@ -549,6 +641,7 @@ async function toggleStatus(docId) {
 }
 
 async function toggleTeamFeePaid() {
+  if (!permissions?.canManagePayments) return;
   if (!tournament) return;
 
   const next = !tournament.teamFeePaid;
@@ -581,6 +674,8 @@ function nextStatus(s) {
    CREATE GUEST (GLOBAL)
 ========================== */
 async function createGuestFlow() {
+  if (!permissions?.canCreateGuests) return;
+
   const name = prompt("Nombre del invitado:");
   if (!name || !name.trim()) return;
 
@@ -644,6 +739,30 @@ function rosterRow(r) {
     feePill = `<span class="pill">Pagado ₡${paid.toLocaleString("es-CR")} | Debe ₡${balance.toLocaleString("es-CR")}</span>`;
   }
 
+  const actionsHtml = (permissions?.canManageRoster || permissions?.canManagePayments)
+    ? `
+      <div class="roster-row__actions">
+        ${permissions?.canManageRoster ? `
+          <button class="btn btn-sm btn-outline-secondary" title="Cambiar estado" data-toggle-status="${escapeHtml(r.id)}">
+            <i class="bi bi-arrow-repeat"></i>
+          </button>
+        ` : ""}
+
+        ${permissions?.canManagePayments && toNumberOrZero(r.feeTotal) > 0 ? `
+          <button class="btn btn-sm btn-outline-success" title="Agregar abono" data-pay="${escapeHtml(r.id)}">
+            <i class="bi bi-cash-coin"></i>
+          </button>
+        ` : ""}
+
+        ${permissions?.canManageRoster ? `
+          <button class="btn btn-sm btn-outline-danger" title="Quitar" data-remove="${escapeHtml(r.id)}">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        ` : ""}
+      </div>
+    `
+    : "";
+
   return `
     <div class="roster-row">
       <div class="roster-row__top">
@@ -655,21 +774,7 @@ function rosterRow(r) {
           </div>
         </div>
 
-        <div class="roster-row__actions">
-          <button class="btn btn-sm btn-outline-secondary" title="Cambiar estado" data-toggle-status="${escapeHtml(r.id)}">
-            <i class="bi bi-arrow-repeat"></i>
-          </button>
-
-          ${toNumberOrZero(r.feeTotal) > 0 ? `
-            <button class="btn btn-sm btn-outline-success" title="Agregar abono" data-pay="${escapeHtml(r.id)}">
-              <i class="bi bi-cash-coin"></i>
-            </button>
-          ` : ""}
-
-          <button class="btn btn-sm btn-outline-danger" title="Quitar" data-remove="${escapeHtml(r.id)}">
-            <i class="bi bi-x-lg"></i>
-          </button>
-        </div>
+        ${actionsHtml}
       </div>
 
       <div class="roster-row__badges">
@@ -708,6 +813,61 @@ function playerPickRow(p) {
   `;
 }
 
+function getGroupedRoster(list) {
+  const groups = new Map();
+
+  PLAYER_ROLES.forEach(role => {
+    groups.set(normalizeRoleId(role.id), {
+      id: normalizeRoleId(role.id),
+      label: role.label || role.id,
+      items: []
+    });
+  });
+
+  const ungrouped = {
+    id: "otros",
+    label: "Otros",
+    items: []
+  };
+
+  list.forEach(item => {
+    const rid = normalizeRoleId(item.role);
+    if (groups.has(rid)) groups.get(rid).items.push(item);
+    else ungrouped.items.push(item);
+  });
+
+  const ordered = [];
+
+  PLAYER_ROLES.forEach(role => {
+    const key = normalizeRoleId(role.id);
+    const group = groups.get(key);
+    if (group && group.items.length) {
+      group.items.sort((a, b) => (a.name || "").localeCompare(b.name || "", "es"));
+      ordered.push(group);
+    }
+  });
+
+  if (ungrouped.items.length) {
+    ungrouped.items.sort((a, b) => (a.name || "").localeCompare(b.name || "", "es"));
+    ordered.push(ungrouped);
+  }
+
+  return ordered;
+}
+
+function rosterGroupSection(group) {
+  return `
+    <section class="roster-group mb-3">
+      <div class="roster-group__title fw-semibold mb-2">
+        ${escapeHtml(group.label)} <span class="text-muted">(${group.items.length})</span>
+      </div>
+      <div class="roster-group__list d-flex flex-column gap-2">
+        ${group.items.map(rosterRow).join("")}
+      </div>
+    </section>
+  `;
+}
+
 /* ==========================
    TEAM FEE UI
 ========================== */
@@ -723,9 +883,11 @@ function renderTeamFee() {
   teamFeePill.textContent = `Team fee: ${amount} · ${paid ? "Pagado" : "Pendiente"}`;
   teamFeePill.className = `pill ${paid ? "pill--good" : "pill--warn"}`;
 
-  toggleTeamFeeBtn.innerHTML = paid
-    ? `<i class="bi bi-cash-coin"></i> Marcar pendiente`
-    : `<i class="bi bi-cash-coin"></i> Marcar pagado`;
+  if (permissions?.canManagePayments) {
+    toggleTeamFeeBtn.innerHTML = paid
+      ? `<i class="bi bi-cash-coin"></i> Marcar pendiente`
+      : `<i class="bi bi-cash-coin"></i> Marcar pagado`;
+  }
 }
 
 /* ==========================
@@ -823,7 +985,9 @@ function syncLegendUI() {
   if (!filtersHintEl) return;
 
   if (activeLegendFilters.size === 0) {
-    filtersHintEl.innerHTML = `Tip: puedes combinar filtros (ej. <strong>Confirmado</strong> + <strong>Fee pendiente</strong>).`;
+    filtersHintEl.innerHTML = permissions?.canManageRoster
+      ? `Tip: puedes combinar filtros (ej. <strong>Confirmado</strong> + <strong>Fee pendiente</strong>).`
+      : `Tip: usa filtros para ordenar mejor el roster por estado, fee o posición.`;
     return;
   }
 
