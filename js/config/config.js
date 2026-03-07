@@ -1,7 +1,7 @@
 //js\config\config.js
 // 
 export const APP_CONFIG = {
-  version: "0.3",
+  version: "0.4",
 
   club: {
     id: "pujaguas",
@@ -10,6 +10,14 @@ export const APP_CONFIG = {
     tournamentsCollection: "tournaments",
     trainingsCollection: "trainings"
   },
+  
+  sport: "ultimate",
+
+  playerRoles: [
+    { id: "handler", label: "Handler" },
+    { id: "cutter",  label: "Cutter" },
+    { id: "hybrid",  label: "Hybrid" }
+  ],
 
   //deben ser reemplazados tambien en: main.css -> root para que carguen por defecto
   theme: {
