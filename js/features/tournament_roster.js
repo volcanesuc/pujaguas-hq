@@ -87,6 +87,11 @@ const contextHint = document.getElementById("contextHint");
 const rosterPanelCol = document.getElementById("rosterPanelCol");
 const playersPanelCol = document.getElementById("playersPanelCol");
 
+const filterBlockStatus = document.getElementById("filterBlockStatus");
+const filterDividerStatus = document.getElementById("filterDividerStatus");
+const filterBlockFee = document.getElementById("filterBlockFee");
+const filterDividerFee = document.getElementById("filterDividerFee");
+
 /* ==========================
    PARAMS / STATE
 ========================== */
@@ -365,8 +370,29 @@ function applyRoleUI() {
       `;
   }
 
-  if (playersTitle && isViewerOnly) playersTitle.textContent = "Jugadores";
-  if (playersSubtitle && isViewerOnly) playersSubtitle.textContent = "";
+  if (playersTitle) {
+    playersTitle.textContent = "Jugadores";
+  }
+
+  if (playersSubtitle) {
+    playersSubtitle.textContent = isViewerOnly ? "" : "—";
+  }
+
+  filterBlockStatus?.classList.toggle("d-none", isViewerOnly);
+  filterDividerStatus?.classList.toggle("d-none", isViewerOnly);
+
+  filterBlockFee?.classList.toggle("d-none", isViewerOnly);
+  filterDividerFee?.classList.toggle("d-none", isViewerOnly);
+
+  if (isViewerOnly) {
+    activeLegendFilters.delete("status:confirmado");
+    activeLegendFilters.delete("status:convocado");
+    activeLegendFilters.delete("status:tentative");
+    activeLegendFilters.delete("fee:pendiente");
+    activeLegendFilters.delete("fee:pagado");
+  }
+
+  syncLegendUI();
 }
 
 /* ==========================
