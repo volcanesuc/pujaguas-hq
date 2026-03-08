@@ -162,14 +162,14 @@ export async function loadHeader(activeTab, cfgOverride) {
       cta.innerHTML = `
         <button id="googleLoginBtn" class="btn btn-light btn-sm d-flex align-items-center gap-2">
           <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="16" height="16" alt="Google">
-          Ingresar con Google
+          Ingresar
         </button>
       `;
 
       mcta.innerHTML = `
         <button id="googleLoginBtnMobile" class="btn btn-light w-100 d-flex align-items-center justify-content-center gap-2">
           <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="16" height="16" alt="Google">
-          Ingresar con Google
+          Ingresar
         </button>
       `;
 

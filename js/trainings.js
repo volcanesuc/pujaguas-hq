@@ -74,6 +74,10 @@ const $ = {
 
   clearFiltersBtn: document.getElementById("clearFiltersBtn"),
 
+  addTrainingBtn: document.getElementById("addTrainingBtn"),
+  filtersCollapse: document.getElementById("trainingFiltersCollapse"),
+  filtersToggle: document.getElementById("trainingFiltersToggle"),
+
 };
 
 let modalInstance = null;
@@ -93,6 +97,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     ensurePlaybookUI();
     bindCollapseCarets();
+    bindResponsiveUI();
 
     updateLoaderMessage("Cargando jugadores…");
     await loadPlayers();
@@ -750,7 +755,7 @@ function renderTrainings(list) {
           <div class="text-muted small">${detailsHtml || "Entrenamiento"}</div>
           <div class="d-flex justify-content-between mt-2">
             <span class="small">👥 ${count} asistentes</span>
-            <span class="text-primary small">Editar →</span>
+            <span class="text-primary small">Abrir</span>
           </div>
         </div>
       </div>
@@ -817,6 +822,33 @@ function updateClearBtnState() {
     (($.dateTo?.value || "") !== "");
 
   $.clearFiltersBtn.disabled = !hasFilters;
+}
+
+function setupResponsiveFiltersCollapse() {
+  if (!$.filtersCollapse) return;
+
+  const collapse = bootstrap.Collapse.getOrCreateInstance($.filtersCollapse, {
+    toggle: false,
+  });
+
+  if (window.innerWidth <= 576) {
+    collapse.hide();
+    $.filtersToggle?.setAttribute("aria-expanded", "false");
+  } else {
+    collapse.show();
+    $.filtersToggle?.setAttribute("aria-expanded", "true");
+  }
+}
+
+let filtersResizeTimer = null;
+
+function bindResponsiveUI() {
+  setupResponsiveFiltersCollapse();
+
+  window.addEventListener("resize", () => {
+    clearTimeout(filtersResizeTimer);
+    filtersResizeTimer = setTimeout(setupResponsiveFiltersCollapse, 120);
+  });
 }
 
 /* =========================
