@@ -269,6 +269,29 @@
   transition: 0.12s ease;
 }
 
+@media (max-width: 576px) {
+  .attendance-page .kpi-card,
+  .trainings-page .kpi-card {
+    border-radius: 14px;
+  }
+
+  .attendance-page .kpi-card .card-body,
+  .trainings-page .kpi-card .card-body {
+    padding: 12px 14px;
+  }
+
+  .attendance-page .kpi-value,
+  .trainings-page .kpi-value {
+    font-size: 1.4rem;
+    line-height: 1.1;
+  }
+
+  .attendance-page .kpi-label,
+  .trainings-page .kpi-label {
+    font-size: 0.8rem;
+  }
+}
+
 /* Search responsive */
 .player-search-wrap{ min-width: 240px; }
 @media (max-width: 576px){
@@ -335,6 +358,13 @@ mark.search-hit {
   flex-wrap: wrap;
 }
 
+.trainings-page .clear-filters-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
 .training-add-btn {
   display: inline-flex;
   align-items: center;
@@ -362,10 +392,16 @@ mark.search-hit {
   text-align: left;
   font-weight: 600;
   color: var(--text, #1f2328);
+  cursor: pointer;
+  transition: background 0.15s ease;
 }
 
 .training-filters-toggle:hover {
   background: rgba(0, 0, 0, 0.02);
+}
+
+.training-filters-toggle:active {
+  background: rgba(0, 0, 0, 0.06);
 }
 
 .training-filters-body {
@@ -374,6 +410,9 @@ mark.search-hit {
 
 .training-filters-chevron {
   transition: transform 0.2s ease;
+  font-size: 1rem;
+  opacity: 0.8;
+  flex-shrink: 0;
 }
 
 .training-filters-toggle[aria-expanded="true"] .training-filters-chevron {
