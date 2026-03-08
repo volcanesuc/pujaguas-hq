@@ -26,7 +26,7 @@ export const APP_CONFIG = {
         { value: "M", label: "Masculino" }
       ]
     }
-  }
+  },
 
   //deben ser reemplazados tambien en: main.css -> root para que carguen por defecto
   theme: {
