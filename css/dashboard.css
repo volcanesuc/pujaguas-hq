@@ -262,6 +262,96 @@
   margin: 0;
 }
 
+/* ======================================================
+   ATTENDANCE HEADER + FILTERS
+====================================================== */
+
+.attendance-page-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.attendance-filters {
+  display: grid;
+  grid-template-columns: 190px 190px auto auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.attendance-filter-field {
+  min-width: 0;
+}
+
+.attendance-filter-btn {
+  min-height: 38px;
+  white-space: nowrap;
+}
+
+.attendance-pdf-btn {
+  font-weight: 700;
+}
+
+@media (max-width: 768px) {
+  .attendance-page-head {
+    align-items: stretch;
+  }
+
+  .attendance-filters {
+    width: 100%;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .attendance-filter-btn {
+    width: 100%;
+  }
+
+  .attendance-pdf-btn {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 576px) {
+  .attendance-page {
+    padding-top: 1rem !important;
+  }
+
+  .attendance-page-head {
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .attendance-page-head .page-title {
+    font-size: 2rem;
+    line-height: 1.05;
+  }
+
+  .attendance-filters {
+    width: 100%;
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .attendance-filter-field,
+  .attendance-filter-field .form-control,
+  .attendance-filter-btn,
+  .attendance-pdf-btn {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .attendance-filter-btn {
+    min-height: 44px;
+  }
+
+  .attendance-pdf-btn {
+    grid-column: auto;
+  }
+}
+
 /* KPI clickable */
 .kpi-clickable{ cursor: pointer; }
 .kpi-clickable:hover{
@@ -978,12 +1068,18 @@ mark.search-hit {
 
 /* Rol chip usa primary-light del theme */
 
+#playersCards .player-chip.role-chip,
 .role-badge {
-  background: var(--primary-light);
-  color: var(--primary);
-  font-weight: 600;
+  background: color-mix(in srgb, var(--theme-primary) 12%, white) !important;
+  color: var(--theme-primary) !important;
+  border: 1px solid color-mix(in srgb, var(--theme-primary) 18%, white);
+  font-weight: 700;
 }
 
+.role-badge {
+  border-radius: 999px;
+  padding: .42rem .7rem;
+}
 /* Gender chip */
 
 #playersCards .player-chip.gender-chip {
@@ -1032,12 +1128,6 @@ mark.search-hit {
 .player-cell-name {
   color: var(--text, #111827);
   line-height: 1.2;
-}
-
-.role-badge {
-  background: var(--primary-light);
-  color: var(--primary);
-  font-weight: 600;
 }
 
 /* ======================================================
