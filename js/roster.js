@@ -221,6 +221,27 @@ function getFilteredPlayers() {
     return matchesName && matchesGender && matchesRole;
   });
 }
+
+function getPlayerInitials(player) {
+  const first = String(player?.firstName || "").trim();
+  const last = String(player?.lastName || "").trim();
+
+  const firstInitial = first ? first.charAt(0).toUpperCase() : "";
+  const lastInitial = last ? last.charAt(0).toUpperCase() : "";
+
+  const initials = `${firstInitial}${lastInitial}`.trim();
+  return initials || "—";
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
 /*************************************************
  * SORTING
  *************************************************/
@@ -289,15 +310,24 @@ function render() {
     .map(
       p => `
       <tr data-id="${p.id}" class="player-row" style="cursor:${permissions?.canEditPlayers ? "pointer" : "default"}">
-        <td class="fw-semibold">${p.fullName}</td>
         <td>
-          <span class="badge bg-info text-dark">
-            ${p.roleLabel}
+          <div class="player-cell">
+            <div class="player-avatar" aria-hidden="true">
+              ${escapeHtml(getPlayerInitials(p))}
+            </div>
+            <div class="player-cell-text">
+              <div class="player-cell-name fw-semibold">${escapeHtml(p.fullName)}</div>
+            </div>
+          </div>
+        </td>
+        <td>
+          <span class="badge role-badge">
+            ${escapeHtml(p.roleLabel)}
           </span>
         </td>
-        <td>${p.number ?? "—"}</td>
-        <td>${getGenderLabel(p.gender)}</td>
-        <td>${formatBirthdayMonthDay(p.birthday)}</td>
+        <td>${escapeHtml(p.number ?? "—")}</td>
+        <td>${escapeHtml(getGenderLabel(p.gender))}</td>
+        <td>${escapeHtml(formatBirthdayMonthDay(p.birthday))}</td>
         <td>
           <span class="badge ${p.active ? "bg-success" : "bg-secondary"}">
             ${p.active ? "Activo" : "Inactivo"}
@@ -320,19 +350,25 @@ function renderMobileCards(list = players) {
     <div class="card mb-2 player-card" data-id="${p.id}" style="cursor:${permissions?.canEditPlayers ? "pointer" : "default"}">
       <div class="card-body">
         <div class="d-flex justify-content-between align-items-start gap-3">
-          <div class="flex-grow-1 min-w-0">
-            <div class="player-name">${p.fullName}</div>
-            <div class="player-extra mt-2">
-              <span class="player-chip role-chip">${p.roleLabel}</span>
-              <span class="player-chip gender-chip">${getGenderLabel(p.gender)}</span>
-              <span class="player-chip">${formatBirthdayMonthDay(p.birthday)}</span>
+          <div class="d-flex align-items-start gap-3 flex-grow-1 min-w-0">
+            <div class="player-avatar" aria-hidden="true">
+              ${escapeHtml(getPlayerInitials(p))}
+            </div>
+
+            <div class="flex-grow-1 min-w-0">
+              <div class="player-name">${escapeHtml(p.fullName)}</div>
+              <div class="player-extra mt-2">
+                <span class="player-chip role-chip">${escapeHtml(p.roleLabel)}</span>
+                <span class="player-chip gender-chip">${escapeHtml(getGenderLabel(p.gender))}</span>
+                <span class="player-chip">${escapeHtml(formatBirthdayMonthDay(p.birthday))}</span>
+              </div>
             </div>
           </div>
 
           <div class="player-top-right text-end">
             <div class="player-number-row">
               <span class="status-dot ${p.active ? "is-active" : "is-inactive"}"></span>
-              <span class="player-number">#${p.number ?? "—"}</span>
+              <span class="player-number">#${escapeHtml(p.number ?? "—")}</span>
             </div>
           </div>
         </div>

@@ -941,6 +941,46 @@ mark.search-hit {
   color: var(--text-soft, #6b7280);
 }
 
+/* Avatar */
+#playersCards .player-avatar {
+  width: 42px;
+  height: 42px;
+  min-width: 42px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--primary-light);
+  color: var(--primary);
+  font-size: .9rem;
+  font-weight: 800;
+  line-height: 1;
+  border: 1px solid color-mix(in srgb, var(--primary) 18%, transparent);
+}
+
+/* Tabla desktop */
+.player-cell {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  min-width: 0;
+}
+
+.player-cell-text {
+  min-width: 0;
+}
+
+.player-cell-name {
+  color: var(--text, #111827);
+  line-height: 1.2;
+}
+
+.role-badge {
+  background: var(--primary-light);
+  color: var(--primary);
+  font-weight: 600;
+}
+
 /* ======================================================
    Offcanvas (Bootstrap) — theme-driven
 ====================================================== */
