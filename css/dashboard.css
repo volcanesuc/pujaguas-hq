@@ -1225,6 +1225,60 @@ mark.search-hit {
 }
 
 /* ======================================================
+   GYM PLAN — slots mobile
+====================================================== */
+
+.gym-slot-card {
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  box-shadow: 0 8px 22px rgba(0,0,0,.05);
+  background: var(--card);
+}
+
+.gym-slot-card .card-body {
+  padding: 1rem;
+}
+
+.gym-slot-order {
+  font-size: .82rem;
+  font-weight: 800;
+  color: var(--text-soft);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.gym-slot-label {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1.2;
+  margin-top: .15rem;
+}
+
+.gym-slot-routine-name {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--theme-primary);
+  line-height: 1.25;
+}
+
+.gym-slot-routine-desc {
+  line-height: 1.45;
+}
+
+.gym-slots-table td,
+.gym-slots-table th {
+  vertical-align: middle;
+}
+
+@media (max-width: 767.98px) {
+  .gym-slot-card .btn {
+    white-space: nowrap;
+  }
+}
+
+
+/* ======================================================
    RESPONSIVE (HOME + attendance)
 ====================================================== */
 
