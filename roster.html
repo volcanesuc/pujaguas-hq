@@ -91,6 +91,56 @@
 
       </div>
 
+      <!-- FILTROS-->
+       <div class="card d-md-none mb-3" id="rosterFiltersCard">
+        <div class="card-body">
+          <button
+            class="btn btn-outline-secondary w-100 d-flex justify-content-between align-items-center"
+            type="button"
+            data-bs-toggle="collapse"
+            data-bs-target="#rosterFiltersCollapse"
+            aria-expanded="false"
+            aria-controls="rosterFiltersCollapse"
+          >
+            <span>Filtros</span>
+            <i class="bi bi-chevron-down"></i>
+          </button>
+
+          <div class="collapse mt-3" id="rosterFiltersCollapse">
+            <div class="row g-2">
+              <div class="col-12">
+                <label for="rosterSearchMobile" class="form-label small mb-1">Buscar por nombre</label>
+                <input
+                  id="rosterSearchMobile"
+                  type="text"
+                  class="form-control"
+                  placeholder="Nombre o apellido"
+                />
+              </div>
+
+              <div class="col-6">
+                <label for="rosterGenderFilterMobile" class="form-label small mb-1">Género</label>
+                <select id="rosterGenderFilterMobile" class="form-select">
+                  <option value="">Todos</option>
+                  <option value="F">Femenino</option>
+                  <option value="M">Masculino</option>
+                </select>
+              </div>
+
+              <div class="col-6">
+                <label for="rosterRoleFilterMobile" class="form-label small mb-1">Rol</label>
+                <select id="rosterRoleFilterMobile" class="form-select">
+                  <option value="">Todos</option>
+                  <option value="cutter">Cutter</option>
+                  <option value="hybrid">Hybrid</option>
+                  <option value="handler">Handler</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
 
       <!-- TABLA DE JUGADORES-->
       <!-- MOBILE -->

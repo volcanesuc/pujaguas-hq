@@ -57,6 +57,26 @@ const fields = {
 // Array plano de jugadores (clave para sorting)
 let players = [];
 
+// Filtros
+const mobileFilters = {
+  search: document.getElementById("rosterSearchMobile"),
+  gender: document.getElementById("rosterGenderFilterMobile"),
+  role: document.getElementById("rosterRoleFilterMobile")
+};
+
+[mobileFilters.search, mobileFilters.gender, mobileFilters.role]
+  .filter(Boolean)
+  .forEach(el => {
+    el.addEventListener("input", render);
+    el.addEventListener("change", render);
+  });
+
+function getGenderLabel(gender) {
+  if (gender === "F") return "Femenino";
+  if (gender === "M") return "Masculino";
+  return "Sin género";
+}
+
 /*************************************************
  * SORT STATE
  *************************************************/
@@ -116,6 +136,28 @@ function formatBirthdayMonthDay(value) {
   return s;
 }
 
+function normalizeText(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+function getFilteredPlayers() {
+  const term = normalizeText(mobileFilters.search?.value);
+  const gender = mobileFilters.gender?.value || "";
+  const role = mobileFilters.role?.value || "";
+
+  return players.filter(p => {
+    const fullName = normalizeText(`${p.firstName || ""} ${p.lastName || ""}`);
+    const matchesName = !term || fullName.includes(term);
+    const matchesGender = !gender || (p.gender || "") === gender;
+    const matchesRole = !role || (p.role || "") === role;
+
+    return matchesName && matchesGender && matchesRole;
+  });
+}
 /*************************************************
  * SORTING
  *************************************************/
@@ -178,7 +220,9 @@ function applySort() {
  *************************************************/
 
 function render() {
-  table.innerHTML = players
+  const filteredPlayers = getFilteredPlayers();
+
+  table.innerHTML = filteredPlayers
     .map(
       p => `
       <tr data-id="${p.id}" class="player-row" style="cursor:${permissions?.canEditPlayers ? "pointer" : "default"}">
@@ -189,7 +233,7 @@ function render() {
           </span>
         </td>
         <td>${p.number ?? "—"}</td>
-        <td>${p.gender ?? "—"}</td>
+        <td>${getGenderLabel(p.gender)}</td>
         <td>${formatBirthdayMonthDay(p.birthday)}</td>
         <td>
           <span class="badge ${p.active ? "bg-success" : "bg-secondary"}">
@@ -200,35 +244,34 @@ function render() {
     `
     )
     .join("");
-    updateRosterStats(); //muestra contadores
-    renderMobileCards();
+
+  updateRosterStats(filteredPlayers);
+  renderMobileCards(filteredPlayers);
 }
 
-function renderMobileCards() {
+function renderMobileCards(list = players) {
   const container = document.getElementById("playersCards");
   if (!container) return;
 
-  container.innerHTML = players.map(p => `
+  container.innerHTML = list.map(p => `
     <div class="card mb-2 player-card" data-id="${p.id}" style="cursor:${permissions?.canEditPlayers ? "pointer" : "default"}">
       <div class="card-body">
-        <div class="d-flex justify-content-between align-items-start gap-2">
-          <div class="flex-grow-1">
+        <div class="d-flex justify-content-between align-items-start gap-3">
+          <div class="flex-grow-1 min-w-0">
             <div class="player-name">${p.fullName}</div>
-            <div class="player-meta mt-1">
-              ${p.active ? "Jugador activo" : "Jugador inactivo"}
+            <div class="player-extra mt-2">
+              <span class="player-chip role-chip">${p.roleLabel}</span>
+              <span class="player-chip gender-chip">${getGenderLabel(p.gender)}</span>
+              <span class="player-chip">${formatBirthdayMonthDay(p.birthday)}</span>
             </div>
           </div>
 
-          <span class="badge ${p.active ? "bg-success" : "bg-secondary"}">
-            ${p.active ? "Activo" : "Inactivo"}
-          </span>
-        </div>
-
-        <div class="player-extra">
-          <span class="player-chip role-chip">${p.roleLabel}</span>
-          <span class="player-chip">#${p.number ?? "—"}</span>
-          <span class="player-chip">${p.gender ?? "—"}</span>
-          <span class="player-chip">${formatBirthdayMonthDay(p.birthday)}</span>
+          <div class="player-top-right text-end">
+            <div class="player-number-row">
+              <span class="status-dot ${p.active ? "is-active" : "is-inactive"}"></span>
+              <span class="player-number">#${p.number ?? "—"}</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -252,15 +295,15 @@ function calculateAge(birthday) {
   return age;
 }
 
-function updateRosterStats() {
-  const list = Object.values(players);
+function updateRosterStats(source = players) {
+  const list = Array.isArray(source) ? source : Object.values(source);
   const activeList = list.filter(p => p.active);
 
   const total = list.length;
   const active = activeList.length;
   const inactive = total - active;
 
-  const men = activeList.filter(p => p.gender === "M" ).length;
+  const men = activeList.filter(p => p.gender === "M").length;
   const women = activeList.filter(p => p.gender === "F").length;
 
   let masterH = 0;
@@ -272,11 +315,9 @@ function updateRosterStats() {
     const age = calculateAge(p.birthday);
     if (age === null || !p.gender) return;
 
-    // MASTER
     if (p.gender === "M" && age >= 33) masterH++;
     if (p.gender === "F" && age >= 30) masterM++;
 
-    // U24
     if (age < 24) {
       if (p.gender === "M") u24H++;
       if (p.gender === "F") u24M++;
@@ -285,13 +326,10 @@ function updateRosterStats() {
 
   document.getElementById("statActive").textContent = `${active} activos`;
   document.getElementById("statInactive").textContent = `${inactive} inactivos`;
-
   document.getElementById("statMen").textContent = men;
   document.getElementById("statWomen").textContent = women;
-
   document.getElementById("statMasterH").textContent = masterH;
   document.getElementById("statMasterM").textContent = masterM;
-
   document.getElementById("statU24H").textContent = u24H;
   document.getElementById("statU24M").textContent = u24M;
 }

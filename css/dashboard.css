@@ -849,26 +849,63 @@ mark.search-hit {
 }
 
 #playersCards .player-card {
+  position: relative;
   border: 1px solid var(--border, #e5e7eb);
   border-radius: 16px;
   box-shadow: 0 4px 14px rgba(0,0,0,.04);
   overflow: hidden;
+  background: var(--card, #fff);
 }
 
 #playersCards .player-card .card-body {
   padding: 1rem;
 }
 
+/* Nombre jugador */
+
 #playersCards .player-name {
   font-size: 1.05rem;
   font-weight: 700;
-  line-height: 1.2;
+  line-height: 1.25;
+  color: var(--text, #111827);
 }
 
-#playersCards .player-meta {
-  color: var(--text-soft, #6b7280);
-  font-size: .92rem;
+/* Top right (# + status) */
+
+#playersCards .player-top-right {
+  flex-shrink: 0;
 }
+
+#playersCards .player-number-row {
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  font-weight: 800;
+}
+
+#playersCards .player-number {
+  font-size: 1rem;
+  color: var(--text, #111827);
+}
+
+/* Status dot */
+
+#playersCards .status-dot {
+  width: .7rem;
+  height: .7rem;
+  border-radius: 999px;
+  display: inline-block;
+}
+
+#playersCards .status-dot.is-active {
+  background: #16a34a;
+}
+
+#playersCards .status-dot.is-inactive {
+  background: #9ca3af;
+}
+
+/* Chips container */
 
 #playersCards .player-extra {
   margin-top: .65rem;
@@ -876,6 +913,8 @@ mark.search-hit {
   flex-wrap: wrap;
   gap: .45rem;
 }
+
+/* Chips base */
 
 #playersCards .player-chip {
   display: inline-flex;
@@ -888,9 +927,18 @@ mark.search-hit {
   color: var(--text, #111827);
 }
 
+/* Rol chip usa primary-light del theme */
+
 #playersCards .player-chip.role-chip {
-  background: #22d3ee;
-  color: #06202a;
+  background: var(--primary-light);
+  color: var(--primary);
+}
+
+/* Gender chip */
+
+#playersCards .player-chip.gender-chip {
+  background: var(--bg-soft, #f3f4f6);
+  color: var(--text-soft, #6b7280);
 }
 
 /* ======================================================
