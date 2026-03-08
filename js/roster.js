@@ -209,22 +209,26 @@ function renderMobileCards() {
   if (!container) return;
 
   container.innerHTML = players.map(p => `
-    <div class="card mb-2 player-card" data-id="${p.id}">
-      <div class="card-body p-3">
-        <div class="d-flex justify-content-between align-items-start">
-          <div>
-            <div class="fw-semibold">${p.fullName}</div>
-            <div class="text-muted small">
-              ${p.roleLabel} · #${p.number ?? "—"}
+    <div class="card mb-2 player-card" data-id="${p.id}" style="cursor:${permissions?.canEditPlayers ? "pointer" : "default"}">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start gap-2">
+          <div class="flex-grow-1">
+            <div class="player-name">${p.fullName}</div>
+            <div class="player-meta mt-1">
+              ${p.active ? "Jugador activo" : "Jugador inactivo"}
             </div>
           </div>
+
           <span class="badge ${p.active ? "bg-success" : "bg-secondary"}">
             ${p.active ? "Activo" : "Inactivo"}
           </span>
         </div>
 
-        <div class="mt-2 small text-muted">
-          ${p.gender ?? "—"} · ${formatBirthdayMonthDay(p.birthday)}
+        <div class="player-extra">
+          <span class="player-chip role-chip">${p.roleLabel}</span>
+          <span class="player-chip">#${p.number ?? "—"}</span>
+          <span class="player-chip">${p.gender ?? "—"}</span>
+          <span class="player-chip">${formatBirthdayMonthDay(p.birthday)}</span>
         </div>
       </div>
     </div>
