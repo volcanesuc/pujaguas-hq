@@ -13,6 +13,8 @@ import {
   updateDoc
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
+import { APP_CONFIG } from "./config/config.js";
+
 import { guardPage } from "./page-guard.js";
 import { loadHeader } from "./components/header.js";
 
@@ -58,23 +60,19 @@ const fields = {
 let players = [];
 
 // Filtros
-const mobileFilters = {
-  search: document.getElementById("rosterSearchMobile"),
-  gender: document.getElementById("rosterGenderFilterMobile"),
-  role: document.getElementById("rosterRoleFilterMobile")
+const filters = {
+  search: document.getElementById("rosterSearch"),
+  gender: document.getElementById("rosterGenderFilter"),
+  role: document.getElementById("rosterRoleFilter"),
+  clear: document.getElementById("rosterClearFilters")
 };
 
-[mobileFilters.search, mobileFilters.gender, mobileFilters.role]
-  .filter(Boolean)
-  .forEach(el => {
-    el.addEventListener("input", render);
-    el.addEventListener("change", render);
-  });
+let rosterFilterEventsBound = false;
 
 function getGenderLabel(gender) {
-  if (gender === "F") return "Femenino";
-  if (gender === "M") return "Masculino";
-  return "Sin género";
+  const cfg = getRosterFilterConfig();
+  const found = cfg.genders.find(g => g.value === gender);
+  return found?.label || "—";
 }
 
 /*************************************************
@@ -144,10 +142,75 @@ function normalizeText(value) {
     .trim();
 }
 
+function getRosterFilterConfig() {
+  const rosterCfg = APP_CONFIG?.roster || {};
+  const filtersCfg = rosterCfg.filters || {};
+
+  const rolesFromConfig = Array.isArray(APP_CONFIG?.playerRoles) && APP_CONFIG.playerRoles.length
+    ? APP_CONFIG.playerRoles.map(r => ({
+        value: r.id,
+        label: r.label
+      }))
+    : [
+        { value: "cutter", label: "Cutter" },
+        { value: "hybrid", label: "Hybrid" },
+        { value: "handler", label: "Handler" }
+      ];
+
+  return {
+    genders: Array.isArray(filtersCfg.genders) && filtersCfg.genders.length
+      ? filtersCfg.genders
+      : [
+          { value: "F", label: "Femenino" },
+          { value: "M", label: "Masculino" }
+        ],
+
+    roles: rolesFromConfig
+  };
+}
+
+function populateRosterFilters() {
+  const cfg = getRosterFilterConfig();
+
+  if (filters.gender) {
+    filters.gender.innerHTML = `
+      <option value="">Todos</option>
+      ${cfg.genders
+        .map(g => `<option value="${g.value}">${g.label}</option>`)
+        .join("")}
+    `;
+  }
+
+  if (filters.role) {
+    filters.role.innerHTML = `
+      <option value="">Todos</option>
+      ${cfg.roles
+        .map(r => `<option value="${r.value}">${r.label}</option>`)
+        .join("")}
+    `;
+  }
+}
+
+function bindRosterFilterEvents() {
+  if (rosterFilterEventsBound) return;
+  rosterFilterEventsBound = true;
+
+  filters.search?.addEventListener("input", render);
+  filters.gender?.addEventListener("change", render);
+  filters.role?.addEventListener("change", render);
+
+  filters.clear?.addEventListener("click", () => {
+    if (filters.search) filters.search.value = "";
+    if (filters.gender) filters.gender.value = "";
+    if (filters.role) filters.role.value = "";
+    render();
+  });
+}
+
 function getFilteredPlayers() {
-  const term = normalizeText(mobileFilters.search?.value);
-  const gender = mobileFilters.gender?.value || "";
-  const role = mobileFilters.role?.value || "";
+  const term = normalizeText(filters.search?.value);
+  const gender = filters.gender?.value || "";
+  const role = filters.role?.value || "";
 
   return players.filter(p => {
     const fullName = normalizeText(`${p.firstName || ""} ${p.lastName || ""}`);
@@ -482,6 +545,9 @@ watchAuth(async () => {
     permissions = await getCurrentPermissions();
 
     applyVisibilityByPermission(permissions, "canEditPlayers", addPlayerBtn);
+
+    populateRosterFilters();
+    bindRosterFilterEvents();
 
     await loadPlayers();
   } finally {

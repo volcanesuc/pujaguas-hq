@@ -92,59 +92,62 @@
       </div>
 
       <!-- FILTROS-->
-       <div class="card d-md-none mb-3" id="rosterFiltersCard">
+      <div class="card mb-3 roster-filters-card">
         <div class="card-body">
           <button
-            class="btn btn-outline-secondary w-100 d-flex justify-content-between align-items-center"
+            class="btn btn-outline-secondary w-100 d-flex justify-content-between align-items-center roster-filters-toggle"
             type="button"
             data-bs-toggle="collapse"
             data-bs-target="#rosterFiltersCollapse"
             aria-expanded="false"
             aria-controls="rosterFiltersCollapse"
           >
-            <span>Filtros</span>
+            <span><i class="bi bi-funnel me-2"></i>Buscar y filtrar</span>
             <i class="bi bi-chevron-down"></i>
           </button>
 
           <div class="collapse mt-3" id="rosterFiltersCollapse">
             <div class="row g-2">
-              <div class="col-12">
-                <label for="rosterSearchMobile" class="form-label small mb-1">Buscar por nombre</label>
-                <input
-                  id="rosterSearchMobile"
-                  type="text"
-                  class="form-control"
-                  placeholder="Nombre o apellido"
-                />
+              <div class="col-12 col-lg-4">
+                <label for="rosterSearch" class="form-label small mb-1">Buscar por nombre</label>
+                <div class="input-group">
+                  <span class="input-group-text"><i class="bi bi-search"></i></span>
+                  <input
+                    id="rosterSearch"
+                    type="text"
+                    class="form-control"
+                    placeholder="Buscar jugador"
+                  />
+                </div>
               </div>
 
-              <div class="col-6">
-                <label for="rosterGenderFilterMobile" class="form-label small mb-1">Género</label>
-                <select id="rosterGenderFilterMobile" class="form-select">
+              <div class="col-6 col-lg-3">
+                <label for="rosterGenderFilter" class="form-label small mb-1">Género</label>
+                <select id="rosterGenderFilter" class="form-select">
                   <option value="">Todos</option>
-                  <option value="F">Femenino</option>
-                  <option value="M">Masculino</option>
                 </select>
               </div>
 
-              <div class="col-6">
-                <label for="rosterRoleFilterMobile" class="form-label small mb-1">Rol</label>
-                <select id="rosterRoleFilterMobile" class="form-select">
+              <div class="col-6 col-lg-3">
+                <label for="rosterRoleFilter" class="form-label small mb-1">Rol</label>
+                <select id="rosterRoleFilter" class="form-select">
                   <option value="">Todos</option>
-                  <option value="cutter">Cutter</option>
-                  <option value="hybrid">Hybrid</option>
-                  <option value="handler">Handler</option>
                 </select>
+              </div>
+
+              <div class="col-12 col-lg-2 d-flex align-items-end">
+                <button id="rosterClearFilters" type="button" class="btn btn-outline-danger w-100">
+                  <i class="bi bi-x-lg"></i>
+                </button>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-
-      <!-- TABLA DE JUGADORES-->
       <!-- MOBILE -->
       <div id="playersCards" class="d-md-none mb-2"></div>
+
       <!-- DESKTOP -->
       <div class="card d-none d-md-block">
         <div class="card-body p-0">
@@ -152,12 +155,12 @@
             <table class="table table-hover align-middle mb-0">
               <thead class="table-light text-uppercase small">
                 <tr>
-                    <th data-sort="name" class="sortable">Jugador</th>
-                    <th data-sort="role" class="sortable">Rol</th>
-                    <th data-sort="number" class="sortable">#</th>
-                    <th data-sort="gender" class="sortable">Género</th>
-                    <th data-sort="birthday" class="sortable">Cumpleaños</th>
-                    <th data-sort="active" class="sortable">Estado</th>
+                  <th data-sort="name" class="sortable">Jugador</th>
+                  <th data-sort="role" class="sortable">Rol</th>
+                  <th data-sort="number" class="sortable">#</th>
+                  <th data-sort="gender" class="sortable">Género</th>
+                  <th data-sort="birthday" class="sortable">Cumpleaños</th>
+                  <th data-sort="active" class="sortable">Estado</th>
                 </tr>
               </thead>
               <tbody id="playersTable"></tbody>
