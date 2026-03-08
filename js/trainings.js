@@ -10,7 +10,7 @@ import {
   where,
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-
+import { APP_CONFIG } from "./config/config.js";
 import { db } from "./auth/firebase.js";
 import { guardPage } from "./page-guard.js";
 import { loadHeader } from "./components/header.js";
@@ -19,11 +19,12 @@ import { showLoader, hideLoader, updateLoaderMessage } from "./ui/loader.js";
 /* =========================
    CONFIG / COLS
 ========================= */
-const clubId = "pujaguas"; // TODO: sacarlo de CLUB_DATA
-const COL_TRAININGS = "trainings";
-const COL_PLAYERS = "club_players";
-const COL_DRILLS = "drills";
-const COL_PLAYBOOK_TRAININGS = "playbook_trainings";
+const COL = APP_CONFIG.collections;
+
+const COL_TRAININGS = COL.trainings;
+const COL_PLAYERS = COL.players;
+const COL_DRILLS = COL.drills;
+const COL_PLAYBOOK_TRAININGS = COL.playbookTrainings;
 
 /* =========================
    STATE
@@ -228,31 +229,14 @@ async function loadPlaybookData() {
   // drills activos
   const qDrills = query(
     collection(db, COL_DRILLS),
-    where("clubId", "==", clubId),
     where("isActive", "==", true)
   );
   const s1 = await getDocs(qDrills);
   pbDrills = s1.docs.map(d => ({ id: d.id, ...d.data() }));
   pbDrills.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
 
-  // playbook trainings (con clubId)
-  const qPB = query(
-    collection(db, COL_PLAYBOOK_TRAININGS),
-    where("clubId", "==", clubId)
-  );
-  const s2 = await getDocs(qPB);
+  const s2 = await getDocs(collection(db, COL_PLAYBOOK_TRAININGS));
   pbTrainings = s2.docs.map(d => ({ id: d.id, ...d.data() }));
-
-  // ✅ fallback migración: si no hay nada, traé todos y quedate con los que
-  // tienen clubId==clubId o no tienen clubId (docs viejos)
-  if (!pbTrainings.length) {
-    console.warn("[trainings] 0 playbook_trainings con clubId, intentando fallback (migración).");
-    const all = await getDocs(collection(db, COL_PLAYBOOK_TRAININGS));
-    pbTrainings = all.docs
-      .map(d => ({ id: d.id, ...d.data() }))
-      .filter(x => !x.clubId || x.clubId === clubId);
-  }
-
   pbTrainings.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
 }
 
@@ -266,31 +250,17 @@ async function loadTrainings() {
   $.cards.innerHTML = "";
   trainings = [];
 
-  // 1) intento con clubId (lo actual)
-  const q1 = query(
+  const q = query(
     collection(db, COL_TRAININGS),
-    where("clubId", "==", clubId),
     orderBy("date", "desc")
   );
 
-  let snapshot = await getDocs(q1);
+  const snapshot = await getDocs(q);
 
-  // 2) fallback migración: si no hay nada, trae todo y filtra local
-  if (snapshot.empty) {
-    console.warn("[trainings] 0 trainings con clubId; fallback (migración).");
+  snapshot.forEach(d => {
+    trainings.push({ id: d.id, ...d.data() });
+  });
 
-    const all = await getDocs(collection(db, COL_TRAININGS));
-    trainings = all.docs
-      .map(d => ({ id: d.id, ...d.data() }))
-      // legacy: sin clubId o clubId correcto
-      .filter(t => !t.clubId || t.clubId === clubId)
-      // orden desc por date
-      .sort((a, b) => (b.date || "").localeCompare(a.date || ""));
-  } else {
-    snapshot.forEach(d => trainings.push({ id: d.id, ...d.data() }));
-  }
-
-  // KPIs + filtros + render
   calcKPIs(trainings);
   fillMonthOptions(trainings);
   refreshListUI();
@@ -518,7 +488,6 @@ async function saveTraining() {
   }
 
   const payload = {
-    clubId,
     date,
     month: date.slice(0, 7),
     attendees,
