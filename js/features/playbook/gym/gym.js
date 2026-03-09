@@ -283,6 +283,7 @@ function renderExercises() {
   }
   $.gymExercisesEmpty?.classList.add("d-none");
 
+  ensureMediaModal();
 
   for (const ex of filtered) {
     const item = document.createElement("div");
