@@ -29,6 +29,14 @@ function showError(msg) {
   tvError.classList.remove("d-none");
 }
 
+function formatNotes(text) {
+  if (!text) return "—";
+
+  return escapeHtml(text)
+    .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>") // **negrita**
+    .replace(/\n/g, "<br>"); // saltos de linea
+}
+
 function escapeHtml(str) {
   return String(str ?? "")
     .replaceAll("&", "&amp;")
@@ -227,7 +235,7 @@ async function initHeader() {
     if (tvTitle) tvTitle.textContent = t.name || "Plan de Entrenamiento";
     if (tvSubtitle) tvSubtitle.textContent = "Plan de Entrenamiento";
     if (tvDate) tvDate.textContent = fmtDate(t.date);
-    if (tvNotes) tvNotes.textContent = t.notes || "—";
+    if (tvNotes) tvNotes.innerHTML = formatNotes(t.notes);
     if (tvPublicState) tvPublicState.textContent = "Público";
 
     const ids = extractOrderedIds(t);
