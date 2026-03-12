@@ -124,7 +124,7 @@ function drillCard(d) {
                 ? `<a class="btn btn-sm btn-outline-primary"
                       target="_blank"
                       rel="noopener"
-                      href="${escapeHtml(tactical)}">Tactical</a>`
+                      href="${escapeHtml(tactical)}">Ver</a>`
                 : ``
             }
           </div>
