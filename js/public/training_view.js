@@ -23,6 +23,9 @@ const tvDrills = $("tvDrills");
 const tvEmpty = $("tvEmpty");
 const tvShareBtn = $("tvShareBtn");
 
+let loadedDrills = [];
+let drillModal = null;
+
 function showError(msg) {
   if (!tvError) return;
   tvError.textContent = msg;
@@ -33,8 +36,8 @@ function formatNotes(text) {
   if (!text) return "—";
 
   return escapeHtml(text)
-    .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>") // **negrita**
-    .replace(/\n/g, "<br>"); // saltos de linea
+    .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+    .replace(/\n/g, "<br>");
 }
 
 function escapeHtml(str) {
@@ -110,7 +113,6 @@ async function fetchDrillsByIds(ids) {
 
 function drillCard(d) {
   const name = d?.name || "—";
-  const tactical = safeUrl(d?.tacticalBoardUrl || "");
   const volume = (d?.volume || "—").toString().trim();
   const rest = (d?.restAfter || "—").toString().trim();
 
@@ -122,14 +124,13 @@ function drillCard(d) {
           <div class="d-flex justify-content-between align-items-start gap-2">
             <div class="fw-semibold">${escapeHtml(name)}</div>
 
-            ${
-              tactical
-                ? `<a class="btn btn-sm btn-outline-primary"
-                      target="_blank"
-                      rel="noopener"
-                      href="${escapeHtml(tactical)}">Ver</a>`
-                : ``
-            }
+            <button
+              type="button"
+              class="btn btn-sm btn-outline-primary js-open-drill"
+              data-drill-id="${escapeHtml(d.id)}"
+            >
+              Ver
+            </button>
           </div>
 
           <div class="row mt-3 g-2">
@@ -158,6 +159,167 @@ function drillCard(d) {
   `;
 }
 
+function ensureDrillModal() {
+  if (document.getElementById("publicDrillModal")) {
+    if (!drillModal && window.bootstrap?.Modal) {
+      drillModal = new bootstrap.Modal(document.getElementById("publicDrillModal"));
+    }
+    return;
+  }
+
+  const modalHtml = `
+    <div class="modal fade" id="publicDrillModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+          <div class="modal-header">
+            <div>
+              <h5 class="modal-title mb-0" id="publicDrillModalTitle">Drill</h5>
+              <small class="text-muted" id="publicDrillModalSubtitle">Detalle del drill</small>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+          </div>
+
+          <div class="modal-body">
+            <div class="row g-3 mb-3">
+              <div class="col-6 col-md-3">
+                <div class="small text-muted">Volumen</div>
+                <div id="publicDrillVolume" class="fw-semibold">—</div>
+              </div>
+
+              <div class="col-6 col-md-3">
+                <div class="small text-muted">Descanso</div>
+                <div id="publicDrillRest" class="fw-semibold">—</div>
+              </div>
+
+              <div class="col-6 col-md-3">
+                <div class="small text-muted">Tipo</div>
+                <div id="publicDrillType" class="fw-semibold">—</div>
+              </div>
+
+              <div class="col-6 col-md-3">
+                <div class="small text-muted">Players</div>
+                <div id="publicDrillPlayers" class="fw-semibold">—</div>
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <div class="small text-muted mb-1">Objetivo</div>
+              <div id="publicDrillObjective">—</div>
+            </div>
+
+            <div class="mb-3">
+              <div class="small text-muted mb-1">Descripción / Notas</div>
+              <div id="publicDrillNotes">—</div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <a
+              id="publicDrillTacticalBtn"
+              class="btn btn-outline-primary d-none"
+              href="#"
+              target="_blank"
+              rel="noopener"
+            >
+              Tactical Board
+            </a>
+            <button type="button" class="btn btn-primary" data-bs-dismiss="modal">
+              Cerrar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.insertAdjacentHTML("beforeend", modalHtml);
+
+  if (window.bootstrap?.Modal) {
+    drillModal = new bootstrap.Modal(document.getElementById("publicDrillModal"));
+  }
+}
+
+function fillDrillModal(drill) {
+  const title = $("publicDrillModalTitle");
+  const subtitle = $("publicDrillModalSubtitle");
+  const volume = $("publicDrillVolume");
+  const rest = $("publicDrillRest");
+  const type = $("publicDrillType");
+  const players = $("publicDrillPlayers");
+  const objective = $("publicDrillObjective");
+  const notes = $("publicDrillNotes");
+  const tacticalBtn = $("publicDrillTacticalBtn");
+
+  if (title) title.textContent = drill?.name || "Drill";
+  if (subtitle) subtitle.textContent = "Detalle del drill";
+
+  if (volume) volume.textContent = (drill?.volume || "—").toString().trim() || "—";
+  if (rest) rest.textContent = (drill?.restAfter || "—").toString().trim() || "—";
+  if (type) type.textContent = (drill?.type || drill?.category || "—").toString().trim() || "—";
+  if (players) {
+    const v =
+      drill?.playersNeeded ??
+      drill?.minPlayers ??
+      drill?.players ??
+      "—";
+    players.textContent = String(v).trim() || "—";
+  }
+
+  if (objective) {
+    objective.innerHTML = drill?.objective
+      ? formatNotes(drill.objective)
+      : "—";
+  }
+
+  if (notes) {
+    const noteText =
+      drill?.description ||
+      drill?.notes ||
+      drill?.instructions ||
+      "";
+    notes.innerHTML = noteText
+      ? formatNotes(noteText)
+      : "—";
+  }
+
+  if (tacticalBtn) {
+    const tactical = safeUrl(drill?.tacticalBoardUrl || "");
+    if (tactical) {
+      tacticalBtn.href = tactical;
+      tacticalBtn.classList.remove("d-none");
+    } else {
+      tacticalBtn.href = "#";
+      tacticalBtn.classList.add("d-none");
+    }
+  }
+}
+
+function openDrillModalById(drillId) {
+  const drill = loadedDrills.find(d => d.id === drillId);
+  if (!drill) return;
+
+  ensureDrillModal();
+  fillDrillModal(drill);
+
+  if (!drillModal && window.bootstrap?.Modal) {
+    drillModal = new bootstrap.Modal(document.getElementById("publicDrillModal"));
+  }
+
+  drillModal?.show();
+}
+
+function bindDrillActions() {
+  tvDrills?.addEventListener("click", (e) => {
+    const btn = e.target.closest(".js-open-drill");
+    if (!btn) return;
+
+    const drillId = btn.getAttribute("data-drill-id");
+    if (!drillId) return;
+
+    openDrillModalById(drillId);
+  });
+}
+
 async function initHeader() {
   try {
     await loadHeader("home", {
@@ -172,7 +334,6 @@ async function initHeader() {
       });
     }
 
-    // Ocultar cualquier nav / botones extra y dejar solo la marca
     const selectorsToHide = [
       "#app-header .navbar-nav",
       "#app-header .nav",
@@ -207,6 +368,8 @@ async function initHeader() {
   showLoader();
 
   try {
+    ensureDrillModal();
+    bindDrillActions();
     await initHeader();
 
     const snap = await getDoc(doc(db, TRAININGS_COL, id));
@@ -245,6 +408,7 @@ async function initHeader() {
     }
 
     const drills = await fetchDrillsByIds(ids);
+    loadedDrills = drills;
 
     tvDrills.innerHTML = drills.length
       ? drills.map(drillCard).join("")
