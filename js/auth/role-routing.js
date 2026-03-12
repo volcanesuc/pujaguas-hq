@@ -1,5 +1,6 @@
 // js/auth/role-routing.js
 import { db } from "./firebase.js";
+import { APP_CONFIG } from "../config/config.js";
 
 import {
   doc,
@@ -8,8 +9,8 @@ import {
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-const USERS_COL = "users";
-const USER_ROLES_COL = "user_roles";
+const COL = APP_CONFIG.collections;
+const USERS_COL = COL.users;
 
 async function ensureUserDoc(firebaseUser) {
   const uid = firebaseUser?.uid;
@@ -20,12 +21,29 @@ async function ensureUserDoc(firebaseUser) {
 
   if (snap.exists()) {
     const data = snap.data() || {};
+    const patch = {};
 
-    if (data.onboardingComplete === undefined) {
-      const patch = {
-        onboardingComplete: false,
-        updatedAt: serverTimestamp()
-      };
+    if (data.uid !== uid) patch.uid = uid;
+    if (data.email !== (firebaseUser.email || null)) patch.email = firebaseUser.email || null;
+
+    if ((data.displayName || null) !== (firebaseUser.displayName || null)) {
+      patch.displayName = firebaseUser.displayName || null;
+    }
+
+    if ((data.photoURL || null) !== (firebaseUser.photoURL || null)) {
+      patch.photoURL = firebaseUser.photoURL || null;
+    }
+
+    if (data.onboardingComplete === undefined) patch.onboardingComplete = false;
+    if (data.isActive === undefined) patch.isActive = false;
+    if (data.role === undefined) patch.role = "viewer";
+
+    if (data.memberId === undefined) patch.memberId = null;
+    if (data.associateId === undefined) patch.associateId = null;
+    if (data.playerId === undefined) patch.playerId = null;
+
+    if (Object.keys(patch).length) {
+      patch.updatedAt = serverTimestamp();
       await setDoc(ref, patch, { merge: true });
       return { created: false, data: { ...data, ...patch } };
     }
@@ -38,10 +56,12 @@ async function ensureUserDoc(firebaseUser) {
     email: firebaseUser.email || null,
     displayName: firebaseUser.displayName || null,
     photoURL: firebaseUser.photoURL || null,
-    phoneNumber: firebaseUser.phoneNumber || null,
-    providerId: firebaseUser.providerData?.[0]?.providerId || "google",
     onboardingComplete: false,
-    isActive: true,
+    isActive: false,
+    role: "viewer",
+    memberId: null,
+    associateId: null,
+    playerId: null,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp()
   };
@@ -50,10 +70,10 @@ async function ensureUserDoc(firebaseUser) {
   return { created: true, data: payload };
 }
 
-export async function getUserRole(uid) {
+export async function getUserAccess(uid) {
   if (!uid) return null;
 
-  const ref = doc(db, USER_ROLES_COL, uid);
+  const ref = doc(db, USERS_COL, uid);
   const snap = await getDoc(ref);
 
   if (!snap.exists()) return null;
@@ -61,19 +81,13 @@ export async function getUserRole(uid) {
   const data = snap.data() || {};
 
   return {
-    active: data.active === true,
+    isActive: data.isActive === true,
+    onboardingComplete: data.onboardingComplete === true,
     role: String(data.role || "viewer").trim().toLowerCase(),
     raw: data
   };
 }
 
-/**
- * Regla:
- * 1) Asegura users/{uid}
- * 2) Si onboardingComplete !== true -> register
- * 3) Si onboardingComplete === true y user_roles/{uid}.active === true -> dashboard
- * 4) Si onboardingComplete === true pero no tiene rol activo -> register?norole=1
- */
 export async function routeAfterGoogleLogin(firebaseUser) {
   if (!firebaseUser?.uid) {
     window.location.href = "/public/register.html?error=nouser";
@@ -85,21 +99,17 @@ export async function routeAfterGoogleLogin(firebaseUser) {
 
   const data = ensured.data || {};
   const onboardingDone = data.onboardingComplete === true;
+  const isActive = data.isActive === true;
 
-  // No ha terminado onboarding
   if (!onboardingDone) {
     window.location.href = `/public/register.html?created=${createdFlag}`;
     return;
   }
 
-  // Ya terminó onboarding -> revisar rol
-  const roleInfo = await getUserRole(firebaseUser.uid);
-
-  if (roleInfo?.active === true) {
+  if (onboardingDone && isActive) {
     window.location.href = "/dashboard.html";
     return;
   }
 
-  // Terminó onboarding pero no tiene rol activo
-  window.location.href = `/public/register.html?created=${createdFlag}&norole=1`;
+  window.location.href = `/index.html?pending=1`;
 }

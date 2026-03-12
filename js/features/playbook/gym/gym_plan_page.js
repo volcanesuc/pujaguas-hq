@@ -3,6 +3,7 @@ import { db } from "/js/auth/firebase.js";
 import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { showLoader, hideLoader, updateLoaderMessage } from "/js/ui/loader.js";
 import { APP_CONFIG } from "/js/config/config.js";
+import { initPublicMinimalHeader } from "/js/components/public-minimal-header.js";
 
 /* =========================
    DOM
@@ -32,6 +33,11 @@ async function boot() {
   showLoader("Cargando plan…");
 
   try {
+    await initPublicMinimalHeader({
+      activeTab: "home",
+      brandHref: "/index.html",
+    });
+
     const params = new URLSearchParams(window.location.search);
     const id = params.get("id");
 
@@ -120,7 +126,6 @@ function renderHeader(plan) {
 
   const meta = [];
   if (plan.monthKey) meta.push(`Mes: ${plan.monthKey}`);
-  if (plan.clubId) meta.push(`Club: ${plan.clubId}`);
   if (plan.isPublic === true) meta.push("🌐 Público");
   if ($.planMeta) $.planMeta.textContent = meta.join(" · ");
 

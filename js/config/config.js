@@ -13,6 +13,8 @@ export const APP_CONFIG = {
     players: "club_players",
     guests: "guest_players",
 
+    users: "users",
+
     attendance: "club_attendance",
 
     tournaments: "tournaments",
@@ -22,7 +24,7 @@ export const APP_CONFIG = {
     playbookTrainings: "playbook_trainings",
 
     gymRoutines: "gym_routines",
-    gymPlans: "gym_weeks",
+    gymPlans: "gym_programs",
     gymExercises: "gym_exercises",
 
     subscriptionPlans: "subscription_plans",
@@ -31,14 +33,27 @@ export const APP_CONFIG = {
     membershipPaymentSubmissions: "membership_payment_submissions",
 
     communityPosts: "community_posts",
+
+    club_config: "club_config",
+    club_honors: "honors",
+    club_uniforms: "uniforms",
+
   },
   
   sport: "ultimate",
 
+  userRoles: [
+    { id: "viewer", label: "Viewer" },
+    { id: "staff", label: "Staff" },
+    { id: "coach", label: "Coach" },
+    { id: "admin", label: "Admin" },
+  ],
+
   playerRoles: [
+    { id: "", label: "Sin definir" },
     { id: "handler", label: "Handler" },
-    { id: "cutter",  label: "Cutter" },
-    { id: "hybrid",  label: "Hybrid" }
+    { id: "cutter", label: "Cutter" },
+    { id: "hybrid", label: "Hybrid" }
   ],
 
   roster: {
@@ -47,6 +62,12 @@ export const APP_CONFIG = {
         { value: "F", label: "Femenino" },
         { value: "M", label: "Masculino" }
       ]
+    }
+  },
+
+  admin: {
+    pages: {
+      users: true,
     }
   },
 

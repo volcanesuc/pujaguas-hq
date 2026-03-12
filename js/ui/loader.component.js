@@ -126,7 +126,7 @@ function applyThemeVars() {
   const cssRing    = readCssVar("--loader-ring"); // si no existe, blanco
 
   const colors = APP_CONFIG?.theme?.colors || {};
-  const primary = cssPrimary || colors.primary || "#370638";
+  const primary = cssPrimary || colors.primary || "#19473f";
   const accent  = cssAccent  || colors.accent  || "#e8ce26";
   const ring    = cssRing || "#ffffff";
 

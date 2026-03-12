@@ -1,9 +1,9 @@
 // //js\auth\register.js
 import { db, auth, storage } from "./firebase.js";
-import { loginWithGoogle, logout } from "./auth.js";
+import { logout } from "./auth.js";
 import { loadHeader } from "../components/header.js";
 import { APP_CONFIG } from "../config/config.js";
-import { showLoader, hideLoader, updateLoaderMessage } from "/js/ui/loader.js";
+import { showLoader, hideLoader } from "/js/ui/loader.js";
 
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
@@ -32,25 +32,16 @@ function releaseUI() {
   document.body.classList.remove("loading");
 }
 
-releaseUI(); // ✅ apenas carga el módulo, mostramos la página
+releaseUI();
 
 const url = new URL(location.href);
-const created = url.searchParams.get("created"); // "0" o "1" o null
+const created = url.searchParams.get("created");
 
-if (created === "0") {
-  // No hagás nada especial, pero asegurá UI visible.
+if (created === "0" || created === "1") {
   releaseUI();
 }
 
-if (created === "1") {
-  // si querés: showAlert("Cuenta creada. Completá el formulario para terminar.", "success");
-  releaseUI();
-}
-
-// ✅ si algo se queda colgado o tarda, igual mostramos la UI
 setTimeout(releaseUI, 2000);
-
-// ✅ si pasa algo raro en runtime, no quedamos pegados
 window.addEventListener("error", releaseUI);
 window.addEventListener("unhandledrejection", releaseUI);
 
@@ -58,10 +49,9 @@ window.addEventListener("unhandledrejection", releaseUI);
    Config / Collections
 ========================= */
 const COL = APP_CONFIG.collections;
-
+const COL_USERS = COL.users;
 const COL_PLANS = COL.subscriptionPlans;
 const COL_ASSOC = COL.associates;
-const COL_PLAYERS = COL.players;
 const COL_MEMBERSHIPS = COL.memberships;
 const COL_INSTALLMENTS = COL.membershipInstallments;
 const COL_SUBMISSIONS = COL.membershipPaymentSubmissions;
@@ -105,11 +95,14 @@ const $ = {
   termsLink: document.getElementById("termsLink"),
 };
 
-let PUBLIC_CFG = { enableMembershipPayment: true, requireTerms: false, requireInfoDeclaration: false };
+let PUBLIC_CFG = {
+  enableMembershipPayment: true,
+  requireTerms: false,
+  requireInfoDeclaration: false,
+};
 
 function isVisible(el) {
   if (!el) return false;
-  // visible en DOM + no oculto por d-none + no hidden + no display none
   if (el.classList?.contains("d-none")) return false;
   if (el.hidden) return false;
   return !!(el.offsetParent || el.getClientRects().length);
@@ -125,11 +118,10 @@ function hasValue(el) {
 function setSubmitEnabled(enabled) {
   if (!$.submitBtn) return;
   $.submitBtn.disabled = !enabled;
-  $.submitBtn.classList.toggle("disabled", !enabled); // opcional (Bootstrap style)
+  $.submitBtn.classList.toggle("disabled", !enabled);
 }
 
 function computeFormComplete() {
-  // básicos siempre
   const requiredEls = [
     $.firstName,
     $.lastName,
@@ -141,16 +133,13 @@ function computeFormComplete() {
     $.canton,
   ];
 
-  // por config: consentimientos
   if (PUBLIC_CFG.requireInfoDeclaration) requiredEls.push($.infoDeclaration);
   if (PUBLIC_CFG.requireTerms) requiredEls.push($.termsAccepted);
 
-  // por config: pago
   if (PUBLIC_CFG.enableMembershipPayment) {
     requiredEls.push($.planId, $.proofFile);
   }
 
-  // Solo consideramos los elementos visibles
   return requiredEls
     .filter((el) => isVisible(el))
     .every((el) => hasValue(el));
@@ -175,12 +164,6 @@ function hideAlert() {
   $.alertBox?.classList.add("d-none");
 }
 
-function setLoading(isLoading) {
-  document.body.classList.toggle("loading", isLoading);
-  if ($.submitBtn) $.submitBtn.disabled = isLoading;
-  if ($.logoutBtn) $.logoutBtn.disabled = isLoading;
-}
-
 function norm(s) {
   return (s || "").toString().trim();
 }
@@ -196,7 +179,10 @@ function normLower(s) {
 function fmtMoney(n, cur = "CRC") {
   const v = Number(n);
   if (Number.isNaN(v)) return "—";
-  return new Intl.NumberFormat("es-CR", { style: "currency", currency: cur }).format(v);
+  return new Intl.NumberFormat("es-CR", {
+    style: "currency",
+    currency: cur,
+  }).format(v);
 }
 
 function makePayCode(len = 6) {
@@ -244,56 +230,91 @@ async function step(name, fn) {
 }
 
 /* =========================
-   Role / Access helpers (safe)
+   User / Access helpers
 ========================= */
-async function hasActiveRole(uid) {
+async function getUserAccessState(uid) {
   try {
-    const roleRef = doc(db, "user_roles", uid);
-    const snap = await getDoc(roleRef);
-    if (!snap.exists()) return false;
-    const r = snap.data();
-    return r?.active === true;
+    const userRef = doc(db, COL_USERS, uid);
+    const snap = await getDoc(userRef);
+    if (!snap.exists()) {
+      return {
+        onboardingComplete: false,
+        isActive: false,
+        role: "viewer",
+        raw: null,
+      };
+    }
+    const data = snap.data() || {};
+    return {
+      onboardingComplete: data.onboardingComplete === true,
+      isActive: data.isActive === true,
+      role: String(data.role || "viewer").trim().toLowerCase(),
+      raw: data,
+    };
   } catch (e) {
-    // si rules bloquean, NO dejamos negro; solo asumimos "no tiene rol"
-    console.warn("hasActiveRole failed:", e);
-    return false;
+    console.warn("getUserAccessState failed:", e);
+    return {
+      onboardingComplete: false,
+      isActive: false,
+      role: "viewer",
+      raw: null,
+    };
   }
 }
 
-// crea user_roles/{uid} SOLO si no existe (viewer por defecto)
-export async function ensureRole(uid) {
-  const ref = doc(db, "user_roles", uid);
-  const snap = await getDoc(ref);
-
-  // si ya existe, no tocarlo (puede ser admin)
-  if (snap.exists()) return snap.data();
-
-  const payload = {
-    role: "viewer",
-    active: true,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  };
-
-  await setDoc(ref, payload);
-  return payload;
-}
-
-/* =========================
-   Ensure users/{uid} exists (new Google users)
-========================= */
-async function ensureUserDoc(uid, email) {
-  const uref = doc(db, "users", uid);
+async function ensureUserDoc(uid, email, user = auth.currentUser) {
+  const uref = doc(db, COL_USERS, uid);
   const usnap = await getDoc(uref).catch(() => null);
 
-  const payload = {
-    email: email || null,
+  if (!usnap?.exists?.()) {
+    const createPayload = {
+      uid,
+      email: email || user?.email || null,
+      displayName: user?.displayName || null,
+      photoURL: user?.photoURL || null,
+      onboardingComplete: false,
+      isActive: false,
+      role: "viewer",
+      memberId: null,
+      associateId: null,
+      playerId: null,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    };
+
+    await setDoc(uref, createPayload, { merge: true });
+    return;
+  }
+
+  const data = usnap.data() || {};
+  const updatePayload = {
     updatedAt: serverTimestamp(),
   };
-  if (!usnap?.exists?.()) payload.createdAt = serverTimestamp();
 
-  // merge para no pisar cosas
-  await setDoc(uref, payload, { merge: true });
+  const nextEmail = email || user?.email || null;
+  const nextDisplayName = user?.displayName || null;
+  const nextPhotoURL = user?.photoURL || null;
+
+  if ((data.email || null) !== nextEmail) {
+    updatePayload.email = nextEmail;
+  }
+
+  if ((data.displayName || null) !== nextDisplayName) {
+    updatePayload.displayName = nextDisplayName;
+  }
+
+  if ((data.photoURL || null) !== nextPhotoURL) {
+    updatePayload.photoURL = nextPhotoURL;
+  }
+
+  if (data.memberId === undefined) updatePayload.memberId = null;
+  if (data.associateId === undefined) updatePayload.associateId = null;
+  if (data.playerId === undefined) updatePayload.playerId = null;
+  if (data.onboardingComplete === undefined) updatePayload.onboardingComplete = false;
+
+  if (Object.keys(updatePayload).length > 1) {
+    await setDoc(uref, updatePayload, { merge: true });
+  }
 }
 
 /* =========================
@@ -320,9 +341,8 @@ const CR = {
     "Dota",
     "Curridabat",
     "Pérez Zeledón",
-    "León Cortés Castro"
+    "León Cortés Castro",
   ],
-
   "Alajuela": [
     "Alajuela",
     "San Ramón",
@@ -339,9 +359,8 @@ const CR = {
     "Upala",
     "Los Chiles",
     "Guatuso",
-    "Río Cuarto"
+    "Río Cuarto",
   ],
-
   "Cartago": [
     "Cartago",
     "Paraíso",
@@ -350,9 +369,8 @@ const CR = {
     "Turrialba",
     "Alvarado",
     "Oreamuno",
-    "El Guarco"
+    "El Guarco",
   ],
-
   "Heredia": [
     "Heredia",
     "Barva",
@@ -363,9 +381,8 @@ const CR = {
     "Belén",
     "Flores",
     "San Pablo",
-    "Sarapiquí"
+    "Sarapiquí",
   ],
-
   "Guanacaste": [
     "Liberia",
     "Nicoya",
@@ -377,9 +394,8 @@ const CR = {
     "Tilarán",
     "Nandayure",
     "La Cruz",
-    "Hojancha"
+    "Hojancha",
   ],
-
   "Puntarenas": [
     "Puntarenas",
     "Esparza",
@@ -391,17 +407,16 @@ const CR = {
     "Coto Brus",
     "Parrita",
     "Corredores",
-    "Garabito"
+    "Garabito",
   ],
-
   "Limón": [
     "Limón",
     "Pococí",
     "Siquirres",
     "Talamanca",
     "Matina",
-    "Guácimo"
-  ]
+    "Guácimo",
+  ],
 };
 
 function fillProvinceCanton() {
@@ -427,14 +442,13 @@ function fillProvinceCanton() {
 }
 
 /* =========================
-   Header: sin tabs aquí (evita flash)
+   Header
 ========================= */
 loadHeader("home", { enabledTabs: {} });
 
 /* =========================
    Auth UI
 ========================= */
-
 $.logoutBtn?.addEventListener("click", async () => {
   try {
     showLoader("Cargando…");
@@ -444,36 +458,46 @@ $.logoutBtn?.addEventListener("click", async () => {
   }
 });
 
-// IMPORTANT: no más “pantalla negra” por errores aquí
 onAuthStateChanged(auth, async (user) => {
   showLoader("Cargando…");
   try {
-    // si ya tiene rol activo -> dashboard
-    if (user?.uid && (await hasActiveRole(user.uid))) {
+    if (!user) {
+      $.logoutBtn?.classList.add("d-none");
+      if ($.email) $.email.readOnly = false;
+      return;
+    }
+
+    const access = await getUserAccessState(user.uid);
+
+    if (!access.onboardingComplete) {
+      if (user.email && $.email) {
+        $.email.value = user.email;
+        $.email.readOnly = true;
+        $.logoutBtn?.classList.remove("d-none");
+      } else {
+        if ($.email) $.email.readOnly = false;
+        $.logoutBtn?.classList.add("d-none");
+      }
+      return;
+    }
+
+    if (access.isActive) {
       window.location.replace("../dashboard.html");
       return;
     }
 
-    // prefill email
-    if (user?.email && $.email) {
-      $.email.value = user.email;
-      $.email.readOnly = true;
-      $.logoutBtn?.classList.remove("d-none");
-    } else {
-      if ($.email) $.email.readOnly = false;
-      $.logoutBtn?.classList.add("d-none");
-    }
+    window.location.replace("../index.html?pending=1");
+    return;
   } catch (e) {
     console.warn("onAuthStateChanged handler failed:", e);
-    // seguimos igual, solo evitamos crash
   } finally {
     hideLoader();
-    releaseUI(); 
+    releaseUI();
   }
 });
 
 /* =========================
-   Config (booleans + textos)
+   Config
 ========================= */
 async function loadPublicRegConfig() {
   const snap = await getDoc(CFG_DOC);
@@ -481,26 +505,18 @@ async function loadPublicRegConfig() {
 
   const requireInfoDeclaration = cfg.requireInfoDeclaration === true;
   const infoDeclarationText = cfg.infoDeclarationText || null;
-
   const enableMembershipPayment = cfg.enableMembershipPayment !== false;
-
   const requireTerms = cfg.requireTerms === true;
   const termsUrl = cfg.termsUrl || null;
 
-  //Pago: si está deshabilitado, ocultar + desactivar + quitar required
   const paymentSection = document.getElementById("paymentSection");
   if (!enableMembershipPayment) {
     paymentSection?.classList.add("d-none");
-
-    // deshabilitar inputs para que HTML validation no moleste
     setEnabled($.planId, false);
     setEnabled($.proofFile, false);
-
-    // quitar required por si lo tienen en el HTML
     setRequired($.planId, false);
     setRequired($.proofFile, false);
 
-    // opcional: limpiar valores
     if ($.planId) $.planId.value = "";
     if ($.proofFile) $.proofFile.value = "";
     if ($.planMeta) $.planMeta.textContent = "";
@@ -508,12 +524,10 @@ async function loadPublicRegConfig() {
     paymentSection?.classList.remove("d-none");
     setEnabled($.planId, true);
     setEnabled($.proofFile, true);
-    // si querés, volverlos required:
     setRequired($.planId, true);
     setRequired($.proofFile, true);
   }
 
-  //Declaración: si no aplica, deshabilitar + quitar required
   if (!requireInfoDeclaration) {
     setEnabled($.infoDeclaration, false);
     setRequired($.infoDeclaration, false);
@@ -522,7 +536,6 @@ async function loadPublicRegConfig() {
     setRequired($.infoDeclaration, true);
   }
 
-  //Términos: si no aplica, deshabilitar + quitar required
   if (!requireTerms) {
     setEnabled($.termsAccepted, false);
     setRequired($.termsAccepted, false);
@@ -553,9 +566,9 @@ async function loadPublicRegConfig() {
   }
 
   PUBLIC_CFG = { enableMembershipPayment, requireTerms, requireInfoDeclaration };
+  updateSubmitState();
 
-   updateSubmitState();
-  return { requireInfoDeclaration, requireTerms, termsUrl, enableMembershipPayment};
+  return { requireInfoDeclaration, requireTerms, termsUrl, enableMembershipPayment };
 }
 
 /* =========================
@@ -576,7 +589,6 @@ async function loadPlans() {
   snap.forEach((d) => plans.push({ id: d.id, ...d.data() }));
 
   const activePlans = plans.filter((p) => p.isActive !== false);
-
   plansById = new Map(activePlans.map((p) => [p.id, p]));
 
   if ($.planId) {
@@ -608,9 +620,10 @@ $.planId?.addEventListener("change", () => {
 });
 
 /* =========================
-   Identity linking (Associate <-> Player)
+   Identity linking
 ========================= */
 async function upsertAssociate({
+  currentAssociateId = null,
   uid,
   email,
   firstName,
@@ -624,21 +637,7 @@ async function upsertAssociate({
 }) {
   const fullName = `${firstName} ${lastName}`.trim();
 
-  let assocId = null;
-
-  if (uid) {
-    const qUid = query(collection(db, COL_ASSOC), where("uid", "==", uid), limit(1));
-    const sUid = await getDocs(qUid);
-    sUid.forEach((d) => (assocId = d.id));
-  }
-
-  if (!assocId && email) {
-    const qEmail = query(collection(db, COL_ASSOC), where("email", "==", email), limit(1));
-    const sEmail = await getDocs(qEmail);
-    sEmail.forEach((d) => (assocId = d.id));
-  }
-
-  const payload = {
+  const basePayload = {
     active: true,
     email: email || null,
     fullName: fullName || null,
@@ -659,16 +658,21 @@ async function upsertAssociate({
     },
 
     consents: consents || null,
-
     updatedAt: serverTimestamp(),
-    createdAt: serverTimestamp(),
   };
 
+  let assocId = currentAssociateId || null;
+
   if (!assocId) {
-    const ref = await addDoc(collection(db, COL_ASSOC), payload);
+    const createPayload = {
+      ...basePayload,
+      createdAt: serverTimestamp(),
+    };
+
+    const ref = await addDoc(collection(db, COL_ASSOC), createPayload);
     assocId = ref.id;
   } else {
-    await setDoc(doc(db, COL_ASSOC, assocId), payload, { merge: true });
+    await setDoc(doc(db, COL_ASSOC, assocId), basePayload, { merge: true });
   }
 
   const associateSnapshot = {
@@ -679,70 +683,6 @@ async function upsertAssociate({
   };
 
   return { assocId, associateSnapshot };
-}
-
-async function findPlayerToLink({ uid, email, firstName, lastName, birthDate }) {
-  if (uid) {
-    const q1 = query(collection(db, COL_PLAYERS), where("uid", "==", uid), limit(1));
-    const s1 = await getDocs(q1);
-    let found = null;
-    s1.forEach((d) => (found = { id: d.id, ...d.data() }));
-    if (found) return found;
-  }
-
-  if (email) {
-    const q2 = query(collection(db, COL_PLAYERS), where("email", "==", email), limit(1));
-    const s2 = await getDocs(q2);
-    let found = null;
-    s2.forEach((d) => (found = { id: d.id, ...d.data() }));
-    if (found) return found;
-  }
-
-  if (firstName && lastName && birthDate) {
-    const qb = query(collection(db, COL_PLAYERS), where("birthday", "==", birthDate), limit(25));
-    const sb = await getDocs(qb);
-
-    const fn = firstName.trim().toLowerCase();
-    const ln = lastName.trim().toLowerCase();
-
-    const matches = [];
-    sb.forEach((d) => {
-      const p = d.data() || {};
-      const pfn = (p.firstName || "").toString().trim().toLowerCase();
-      const pln = (p.lastName || "").toString().trim().toLowerCase();
-      if (pfn === fn && pln === ln) matches.push({ id: d.id, ...p });
-    });
-
-    if (matches.length === 1) return matches[0];
-  }
-
-  return null;
-}
-
-async function ensureLinkedPlayer({ assocId, uid, email, firstName, lastName, birthDate }) {
-  let player = await findPlayerToLink({ uid, email, firstName, lastName, birthDate });
-
-  const payload = {
-    active: true,
-    firstName: firstName || null,
-    lastName: lastName || null,
-    birthday: birthDate || null,
-
-    associateId: assocId,
-    uid: uid || null,
-    email: email || null,
-
-    updatedAt: serverTimestamp(),
-    createdAt: serverTimestamp(),
-  };
-
-  if (!player) {
-    const ref = await addDoc(collection(db, COL_PLAYERS), payload);
-    return { playerId: ref.id, created: true };
-  }
-
-  await setDoc(doc(db, COL_PLAYERS, player.id), payload, { merge: true });
-  return { playerId: player.id, created: false };
 }
 
 /* =========================
@@ -777,7 +717,7 @@ async function createMembership({ assocId, associateSnapshot, plan, season, cons
 
     currency: planSnap.currency,
     totalAmount: planSnap.totalAmount,
-    season: season,
+    season,
 
     status: "pending",
 
@@ -912,14 +852,13 @@ async function init() {
     fillProvinceCanton();
     await loadPlans();
 
-    const cfg = await loadPublicRegConfig(); // 👈 AQUÍ
+    const cfg = await loadPublicRegConfig();
 
     if (!cfg.enableMembershipPayment) {
       const sec = document.getElementById("paymentSection");
       if (sec) sec.classList.add("d-none");
       updateSubmitState();
     }
-
   } catch (e) {
     console.warn(e);
     showAlert("No se pudo cargar la configuración. Refresca la página.");
@@ -949,7 +888,6 @@ $.form?.addEventListener("submit", async (ev) => {
 
   const uid = user.uid;
 
-  // Data
   const firstName = norm($.firstName?.value);
   const lastName = norm($.lastName?.value);
   const birthDate = norm($.birthDate?.value);
@@ -976,7 +914,6 @@ $.form?.addEventListener("submit", async (ev) => {
   const payerName = norm($.payerName?.value) || `${firstName} ${lastName}`.trim();
   const method = normLower($.payMethod?.value) || "sinpe";
 
-  // enforce config
   let cfg;
   try {
     cfg = await loadPublicRegConfig();
@@ -986,17 +923,16 @@ $.form?.addEventListener("submit", async (ev) => {
     return;
   }
 
-  // Validate basics
   if (!firstName || !lastName || !birthDate || !idType || !idNumber || !email) {
     showAlert("Completa todos los campos obligatorios.");
     return;
   }
+
   if (!residence.province || !residence.canton) {
     showAlert("Selecciona provincia y cantón.");
     return;
   }
 
-  //Validate if payments is enabled or not
   const paymentsEnabled = !!cfg.enableMembershipPayment;
   if (paymentsEnabled) {
     if (!planId || !plan) {
@@ -1013,6 +949,7 @@ $.form?.addEventListener("submit", async (ev) => {
     showAlert("Debes aceptar la declaración de veracidad/uso de información.");
     return;
   }
+
   if (cfg.requireTerms && !$.termsAccepted?.checked) {
     showAlert("Debes aceptar los términos y condiciones.");
     return;
@@ -1028,15 +965,19 @@ $.form?.addEventListener("submit", async (ev) => {
   };
 
   showLoader("Cargando…");
-  await step("Ensure access role (user_roles/{uid})", () => ensureRole(uid));
+
   try {
     if (!uid) throw new Error("No hay uid (login incompleto).");
 
-    // usuarios nuevos: garantizamos users/{uid} para que nada reviente después
     await step("Ensure users/{uid}", () => ensureUserDoc(uid, email));
+    const userRef = doc(db, COL_USERS, uid);
+    const userSnap = await step("Reload users/{uid}", () => getDoc(userRef));
+    const userData = userSnap.exists() ? userSnap.data() || {} : {};
+    const existingAssociateId = userData.associateId || null;
 
     const { assocId, associateSnapshot } = await step("Upsert associate", () =>
       upsertAssociate({
+        currentAssociateId: existingAssociateId,
         uid,
         email,
         firstName,
@@ -1050,98 +991,84 @@ $.form?.addEventListener("submit", async (ev) => {
       })
     );
 
-    const { playerId } = await step("Link/create club_player", () =>
-      ensureLinkedPlayer({ assocId, uid, email, firstName, lastName, birthDate })
-    );
-
-    await step("Update associate.playerId", () =>
-      setDoc(
-        doc(db, COL_ASSOC, assocId),
-        { playerId: playerId || null, updatedAt: serverTimestamp() },
-        { merge: true }
-      )
-    );
-
-    const paymentsEnabled = !!cfg.enableMembershipPayment;
     if (paymentsEnabled) {
+      const proof = await step("Upload proof (Storage)", () =>
+        uploadProofFile({ uid, assocId, file })
+      );
 
-        const proof = await step("Upload proof (Storage)", () =>
-          uploadProofFile({ uid, assocId, file })
-        );
+      const season = plan.season || safeSeasonFromToday();
 
-        const season = plan.season || safeSeasonFromToday();
+      const { membershipId } = await step("Create membership", () =>
+        createMembership({
+          assocId,
+          associateSnapshot,
+          plan: { id: planId, ...plan },
+          season,
+          consents,
+        })
+      );
 
-        const { membershipId } = await step("Create membership", () =>
-          createMembership({
-            assocId,
-            associateSnapshot,
-            plan: { id: planId, ...plan },
-            season,
-            consents,
-          })
-        );
+      await step("Maybe create installments", () =>
+        maybeCreateInstallments({ membershipId, plan: { id: planId, ...plan }, season })
+      );
 
-        await step("Maybe create installments", () =>
-          maybeCreateInstallments({ membershipId, plan: { id: planId, ...plan }, season })
-        );
+      await step("Create payment submission", () =>
+        addDoc(collection(db, COL_SUBMISSIONS), {
+          adminNote: null,
+          note: null,
 
-        await step("Create payment submission", () =>
-          addDoc(collection(db, COL_SUBMISSIONS), {
-            adminNote: null,
-            note: null,
+          amountReported: planAmount(plan),
+          currency: plan.currency || "CRC",
 
-            amountReported: planAmount(plan),
-            currency: plan.currency || "CRC",
+          email,
+          payerName: payerName || null,
+          phone: phone || null,
+          method: method || "sinpe",
 
-            email,
-            payerName: payerName || null,
-            phone: phone || null,
-            method: method || "sinpe",
+          filePath: proof.filePath,
+          fileType: proof.fileType,
+          fileUrl: proof.fileUrl,
 
-            filePath: proof.filePath,
-            fileType: proof.fileType,
-            fileUrl: proof.fileUrl,
+          installmentId: null,
+          selectedInstallmentIds: [],
 
-            installmentId: null,
-            selectedInstallmentIds: [],
+          membershipId,
+          planId,
+          season,
 
-            membershipId,
-            planId,
-            season,
+          status: "pending",
+          userId: uid,
 
-            status: "pending",
-            userId: uid,
-
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
-          })
-        );
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        })
+      );
     }
 
     await step("Mark onboarding complete (users/{uid})", async () => {
-      const uref = doc(db, "users", uid);
+      const uref = doc(db, COL_USERS, uid);
+
       const payload = {
+        uid,
         email: email || auth.currentUser?.email || null,
+        displayName:
+          auth.currentUser?.displayName || `${firstName} ${lastName}`.trim() || null,
+        photoURL: auth.currentUser?.photoURL || null,
 
         onboardingComplete: true,
 
-        associateId: assocId,
-        playerId: playerId || null,
-
-        firstName: firstName || null,
-        lastName: lastName || null,
-        birthDate: birthDate || null,
-        phone: phone || null,
+        memberId: assocId || null,
+        associateId: assocId || null,
+        playerId: null,
 
         updatedAt: serverTimestamp(),
       };
+
       return setDoc(uref, payload, { merge: true });
     });
 
     sessionStorage.removeItem("prefill_register");
-
-    // desde /public/
-    window.location.replace("../dashboard.html");
+    window.location.replace("../index.html?pending=1");
     return;
   } catch (e) {
     console.warn(e);
@@ -1153,21 +1080,26 @@ $.form?.addEventListener("submit", async (ev) => {
 
 function wireUpFormCompleteness() {
   const els = [
-    $.firstName, $.lastName, $.birthDate, $.idType, $.idNumber, $.email,
-    $.province, $.canton, $.planId, $.proofFile,
-    $.infoDeclaration, $.termsAccepted,
+    $.firstName,
+    $.lastName,
+    $.birthDate,
+    $.idType,
+    $.idNumber,
+    $.email,
+    $.province,
+    $.canton,
+    $.planId,
+    $.proofFile,
+    $.infoDeclaration,
+    $.termsAccepted,
   ].filter(Boolean);
 
-  // input para texto, change para selects/checkbox/file
   els.forEach((el) => {
     el.addEventListener("input", updateSubmitState);
     el.addEventListener("change", updateSubmitState);
   });
 
-  // cuando cambia provincia, se repuebla cantón → recalculamos
   $.province?.addEventListener("change", () => setTimeout(updateSubmitState, 0));
-
-  // estado inicial
   updateSubmitState();
 }
 

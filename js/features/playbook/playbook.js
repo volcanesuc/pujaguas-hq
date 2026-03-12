@@ -6,14 +6,15 @@ import { showLoader, hideLoader } from "../../ui/loader.js";
 import { guardPage } from "../../page-guard.js";
 import { loadHeader } from "../../components/header.js";
 
-import { CLUB_DATA } from "../../strings.js";
 import { PLAYBOOK_STRINGS as S } from "../../strings/playbook_strings.js";
 
 import { loadPartialOnce } from "/js/ui/loadPartial.js";
-import { createTrainingEditor } from "./training_editor.js";
+import { createTrainingEditor } from "./training_plan_editor.js";
 
 import { initGymTab } from "./gym/gym.js";
 import { initGymEditors } from "./gym/gym_editors.js";
+
+import { openMediaViewerModal } from "../../ui/media_viewer_modal.js";
 
 import {
   collection,
@@ -37,7 +38,6 @@ const COL_PLAYBOOK_TRAININGS = "playbook_trainings";
    State
 ========================= */
 let $ = {};
-let clubId = CLUB_DATA?.club?.id || "pujaguas";
 
 let canEdit = false;
 let drills = [];
@@ -74,8 +74,8 @@ watchAuth(async () => {
     await loadDrills();
     await loadTrainings();
     try {
-      await initGymTab({ db, clubId, canEdit, modalMountId: "modalMount" });
-      await initGymEditors({ db, clubId, canEdit, modalMountId: "modalMount" });
+      await initGymTab({ db, canEdit });
+      await initGymEditors({ db, canEdit, modalMountId: "modalMount" });
     } catch (e) {
       console.error("[playbook] Gym init error:", e);
       showAlert("La pestaña Gimnasio falló al cargar. Ver consola.", "warning");
@@ -185,10 +185,13 @@ function clearAlert() {
 async function loadDrills() {
   const showArchived = !!$.showArchivedSwitch?.checked;
 
-  const filters = [where("clubId", "==", clubId)];
+  const filters = [];
   if (!showArchived) filters.push(where("isActive", "==", true));
 
-  const qy = query(collection(db, COL_DRILLS), ...filters);
+  let qy = collection(db, COL_DRILLS);
+  if (!showArchived) {
+    qy = query(qy, where("isActive", "==", true));
+  }
   const snap = await getDocs(qy);
 
   drills = snap.docs.map(d => {
@@ -277,22 +280,9 @@ async function loadTrainings() {
       return;
     }
 
-    // Query principal (nuevo modelo)
-    const q1 = query(
-      collection(db, COL_PLAYBOOK_TRAININGS),
-      where("clubId", "==", clubId)
-    );
-
+    const q1 = collection(db, COL_PLAYBOOK_TRAININGS);
     const snap1 = await getDocs(q1);
     let rows = snap1.docs.map(d => ({ id: d.id, ...d.data() }));
-
-    // ✅ Fallback migración:
-    // si no hay nada y sospechamos docs viejos sin clubId, traemos todo (solo para admins)
-    if (!rows.length && canEdit) {
-      console.warn("[playbook] 0 trainings con clubId. Intentando fallback sin filtro (migración).");
-      const snapAll = await getDocs(collection(db, COL_PLAYBOOK_TRAININGS));
-      rows = snapAll.docs.map(d => ({ id: d.id, ...d.data() }));
-    }
 
     trainings = rows;
 
@@ -348,7 +338,6 @@ function renderDrills() {
     const video = safeUrl(d.teamVideoUrl);
     const active = d.isActive !== false;
 
-    //para editar (solo admin)
     const clickable = canEdit
       ? `data-edit-drill="${escapeHtml(d.id)}" style="cursor:pointer"`
       : "";
@@ -363,15 +352,37 @@ function renderDrills() {
           <div class="d-flex justify-content-between gap-2">
             <div>
               <div class="fw-semibold">${escapeHtml(d.name || "—")}</div>
-              <div class="text-muted small">
-                ${tactical
-                  ? `<a href="${escapeHtml(tactical)}" target="_blank" rel="noopener">Tactical</a>`
-                  : `<span class="text-muted">Sin Tactical</span>`}
-                <span class="mx-2">•</span>
-                ${video
-                  ? `<a href="${escapeHtml(video)}" target="_blank" rel="noopener">Video</a>`
-                  : `<span class="text-muted">Sin video</span>`}
+
+              <div class="text-muted small d-flex flex-wrap align-items-center gap-2">
+                ${
+                  tactical
+                    ? `<button
+                          type="button"
+                          class="btn btn-link btn-sm p-0 text-decoration-none"
+                          data-open-external="${escapeHtml(tactical)}"
+                          data-open-title="${escapeHtml(d.name || "Tactical Board")}"
+                       >
+                          Ver
+                       </button>`
+                    : `<span class="text-muted">Sin Tactical</span>`
+                }
+
+                <span>•</span>
+
+                ${
+                  video
+                    ? `<button
+                          type="button"
+                          class="btn btn-link btn-sm p-0 text-decoration-none"
+                          data-open-external="${escapeHtml(video)}"
+                          data-open-title="${escapeHtml(d.name || "Video")}"
+                       >
+                          Video
+                       </button>`
+                    : `<span class="text-muted">Sin video</span>`
+                }
               </div>
+
               ${tagsHtml}
             </div>
 
@@ -425,11 +436,23 @@ function renderDrills() {
     $.drillsList?.appendChild(card);
   }
 
-  // ✅ toggle archive/reactivate
+
+  $.drillsList?.querySelectorAll("[data-open-external]").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+
+      const url = btn.getAttribute("data-open-external");
+      const title = btn.getAttribute("data-open-title") || "Vista previa";
+      if (!url) return;
+
+      openMediaViewerModal(url, { title });
+    });
+  });
+
   if (canEdit) {
     $.drillsList?.querySelectorAll("button[data-action='toggle']").forEach(btn => {
       btn.addEventListener("click", async (e) => {
-        e.stopPropagation(); // ✅ no abrir editor si se clickea el botón
+        e.stopPropagation();
         const id = btn.getAttribute("data-id");
         if (!id) return;
         showLoader();
@@ -441,7 +464,6 @@ function renderDrills() {
       });
     });
 
-    // ✅ click card => editar (ignorando clicks en links/botones)
     $.drillsList?.querySelectorAll("[data-edit-drill]").forEach(el => {
       el.addEventListener("click", async (e) => {
         const target = e.target;
@@ -450,7 +472,6 @@ function renderDrills() {
         const id = el.getAttribute("data-edit-drill");
         if (!id) return;
 
-        // esta función la agregaste aparte (abre modal + carga datos)
         await openDrillEditor(id);
       });
     });
@@ -502,7 +523,7 @@ function renderTrainings() {
     const item = document.createElement("div");
     item.className = "list-group-item";
 
-    const sharePath = `/training.html?id=${encodeURIComponent(t.id)}`;
+    const sharePath = `/training_plan.html?id=${encodeURIComponent(t.id)}`;
 
     item.innerHTML = `
       <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
@@ -548,15 +569,13 @@ function renderTrainings() {
     });
   });
 
-  // ver privado (logueados) -> abre igual training.html, pero ahí va a bloquear si isPublic=false
-  // Si querés permitir privado en training.html para signedIn, lo hacemos luego (con auth opcional).
   $.trainingsList.querySelectorAll("[data-view-private]").forEach(btn => {
     btn.addEventListener("click", () => {
       const id = btn.getAttribute("data-view-private");
       if (!id) return;
       // por ahora lo llevamos a una vista interna (simple): abre modal de edición en read-only no lo hicimos.
       // entonces abrimos la misma vista pública, que mostrará "privado" (por diseño).
-      window.open(`/training.html?id=${encodeURIComponent(id)}`, "_blank");
+      window.open(`/training_plan.html?id=${encodeURIComponent(id)}`, "_blank");
     });
   });
 
@@ -576,7 +595,7 @@ function renderTrainings() {
 ========================= */
 async function ensureTrainingEditor() {
   // asegurate de tener <div id="modalMount"></div> en el HTML
-  await loadPartialOnce("/partials/training_editor.html", "modalMount");
+  await loadPartialOnce("/partials/training_plan_editor.html", "modalMount");
   if (!trainingEditor) trainingEditor = createTrainingEditor();
   return trainingEditor;
 }
@@ -638,7 +657,6 @@ async function createDrillFromForm() {
   }
 
   await addDoc(collection(db, COL_DRILLS), {
-    clubId,
     name,
     authorName,
     tacticalBoardUrl: safeUrl($.drillTacticalUrl?.value) || "",
@@ -762,7 +780,6 @@ async function saveDrillEdits(ui) {
   }
 
   await setDoc(doc(db, COL_DRILLS, id), {
-    clubId,
     name,
     authorName,
     tacticalBoardUrl: safeUrl(ui.tactical.value) || "",

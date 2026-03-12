@@ -399,6 +399,109 @@ mark.search-hit {
   border-radius: .25rem;
 }
 
+/* =========================================
+   APP FULLSCREEN MODALS
+========================================= */
+
+.app-modal {
+  border: 0;
+  border-radius: 0;
+}
+
+.app-modal__header {
+  background: linear-gradient(
+    90deg,
+    var(--theme-primary) 0%,
+    var(--theme-primary-dark, var(--theme-primary)) 100%
+  );
+  color: #fff;
+  border-bottom: 0;
+  padding: 1rem 1.25rem;
+}
+
+.app-modal__subtitle {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.app-modal__body {
+  background: #f7f8fa;
+  padding: 1.25rem;
+  overflow-y: auto;
+}
+
+.app-modal__footer {
+  border-top: 1px solid #e8ebef;
+  background: #fff;
+  padding: 1rem 1.25rem;
+}
+
+.app-form-card {
+  border: 1px solid #e8ebef;
+  border-radius: 16px;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+}
+
+.app-form-card .card-body {
+  padding: 1rem;
+}
+
+.app-list-scroll {
+  overflow: auto;
+}
+
+.app-modal__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.app-modal__footer-left,
+.app-modal__footer-right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.app-modal__footer-right {
+  margin-left: auto;
+}
+
+@media (max-width: 767.98px) {
+  .app-modal__footer {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+
+  .app-modal__footer-left,
+  .app-modal__footer-right {
+    width: 100%;
+  }
+
+  .app-modal__footer-left .btn,
+  .app-modal__footer-right .btn {
+    flex: 1 1 auto;
+  }
+}
+
+@media (min-width: 1200px) {
+  .app-list-scroll--selected {
+    max-height: 38vh;
+  }
+
+  .app-list-scroll--results {
+    max-height: 36vh;
+  }
+}
+
+@media (max-width: 1199.98px) {
+  .app-list-scroll--selected,
+  .app-list-scroll--results {
+    max-height: 32vh;
+  }
+}
+
 /* ======================================================
    TOURNAMENTS PAGE
 ====================================================== */
