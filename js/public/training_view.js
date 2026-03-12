@@ -14,7 +14,6 @@ const $ = (id) => document.getElementById(id);
 
 const tvTitle = $("tvTitle");
 const tvSubtitle = $("tvSubtitle");
-const tvDate = $("tvDate");
 const tvNotes = $("tvNotes");
 const tvPublicState = $("tvPublicState");
 const tvError = $("tvError");
@@ -191,7 +190,6 @@ function drillCard(d) {
 
     if (tvTitle) tvTitle.textContent = "Plan de Entrenamiento";
     if (tvSubtitle) tvSubtitle.textContent = t.name || "-";
-    if (tvDate) tvDate.textContent = fmtDate(t.date);
     if (tvNotes) tvNotes.innerHTML = formatNotes(t.notes);
     if (tvPublicState) tvPublicState.textContent = "Público";
 
