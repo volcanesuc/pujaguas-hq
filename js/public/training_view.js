@@ -189,8 +189,8 @@ function drillCard(d) {
       return;
     }
 
-    if (tvTitle) tvTitle.textContent = t.name || "Entrenamiento";
-    if (tvSubtitle) tvSubtitle.textContent = "Pujaguas Ultimate";
+    if (tvTitle) tvTitle.textContent = "Plan de Entrenamiento";
+    if (tvSubtitle) tvSubtitle.textContent = t.name || "-";
     if (tvDate) tvDate.textContent = fmtDate(t.date);
     if (tvNotes) tvNotes.innerHTML = formatNotes(t.notes);
     if (tvPublicState) tvPublicState.textContent = "Público";
