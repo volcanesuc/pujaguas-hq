@@ -4,12 +4,7 @@ import { showLoader, hideLoader } from "../ui/loader.js";
 
 import {
   doc,
-  getDoc,
-  collection,
-  getDocs,
-  query,
-  where,
-  documentId
+  getDoc
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const TRAININGS_COL = "playbook_trainings";
@@ -56,14 +51,7 @@ function fmtDate(value) {
   return d.toLocaleDateString("es-CR", { year: "numeric", month: "short", day: "2-digit" });
 }
 
-function chunk(arr, size) {
-  const out = [];
-  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
-  return out;
-}
-
 function extractOrderedIds(training) {
-  // Nuevo formato: drillRefs: [{drillId, order}]
   if (Array.isArray(training?.drillRefs) && training.drillRefs.length) {
     return training.drillRefs
       .map((r, idx) => ({
@@ -75,12 +63,10 @@ function extractOrderedIds(training) {
       .map(x => x.id);
   }
 
-  // Viejo: drillIds: ["id1","id2"]
   if (Array.isArray(training?.drillIds) && training.drillIds.length) {
     return training.drillIds.map(x => String(x || "").trim()).filter(Boolean);
   }
 
-  // Otros posibles nombres viejos
   if (Array.isArray(training?.drills) && training.drills.length) {
     return training.drills.map(x => String(x || "").trim()).filter(Boolean);
   }
@@ -89,23 +75,30 @@ function extractOrderedIds(training) {
 }
 
 async function fetchDrillsByIds(ids) {
-  const chunks = chunk(ids, 10);
-  const results = new Map();
+  const results = await Promise.all(
+    ids.map(async (id) => {
+      try {
+        const snap = await getDoc(doc(db, DRILLS_COL, id));
+        if (!snap.exists()) return null;
 
-  for (const c of chunks) {
-    const qy = query(collection(db, DRILLS_COL), where(documentId(), "in", c));
-    const snap = await getDocs(qy);
-    snap.forEach(d => results.set(d.id, { id: d.id, ...d.data() }));
-  }
+        const data = { id: snap.id, ...snap.data() };
 
-  // mantener el orden
-  return ids.map(id => results.get(id)).filter(Boolean);
+        // blindaje adicional
+        if (data.isPublic !== true) return null;
+
+        return data;
+      } catch (err) {
+        console.warn("No se pudo leer drill:", id, err);
+        return null;
+      }
+    })
+  );
+
+  return results.filter(Boolean);
 }
 
 function drillCard(d) {
   const name = d?.name || "—";
-
-  // ✅ campos reales
   const tactical = safeUrl(d?.tacticalBoardUrl || "");
   const volume = (d?.volume || "—").toString().trim();
   const rest = (d?.restAfter || "—").toString().trim();
@@ -183,7 +176,6 @@ function drillCard(d) {
 
     const t = { id: snap.id, ...snap.data() };
 
-    // Opción A: privado => requiere login (reglas), pero acá igual bloqueamos si no es público
     if (t.isPublic !== true) {
       showError("Este entrenamiento es privado.");
       return;
@@ -203,7 +195,6 @@ function drillCard(d) {
 
     const drills = await fetchDrillsByIds(ids);
 
-    // Render
     tvDrills.innerHTML = drills.length
       ? drills.map(drillCard).join("")
       : "";
